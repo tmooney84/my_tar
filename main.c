@@ -41,6 +41,7 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #include "my_printf.h"
 #include "print_error.h"
 
+//better to use a union? padding needed?
 typedef struct posix_header
 {                              /* byte offset */
   char name[100];               /*   0 */
@@ -70,7 +71,7 @@ typedef struct tar_record{
     tar_block block [20];
 } tar_record;
 
-typedef struct 
+// ??? typedef struct >>> for 2 zero blocks + the 18 of padding
 
 void flag_error();
 void file_error(char * file_name);
@@ -78,6 +79,10 @@ void failed_alloc();
 void print_string_array(char **all_names, int num_names);
 void free_string_array(char **names, int num_names);
 int create_tar(int argc, char ** argv, int v_flag);
+int archive_tar(int argc, char **argv);
+int update_tar(int argc, char **argv);
+int list_tar(int argc, char **argv, int v_flag);
+int extract_tar(int argc, char **argv, int v_flag);
 
 
 int main(int argc, char **argv)
@@ -111,8 +116,7 @@ else if(my_strcmp(argv[1], "-cf")==0)
 //     }
 else if(my_strcmp(argv[1], "-rf")==0)
     {
-        r_flag = 1;
-        f_flag = 1;
+        archive_tar(argc, argv);
     }
 else if(my_strcmp(argv[1], "-tf")==0)
     {
@@ -233,7 +237,47 @@ void free_string_array(char **names, int num_names)
 } 
 
 
-int create_tar(int argc, char ** argv, int v_flag)
+ create_tar(int argc, char ** argv, int v_flag)
 {
-//
+//fill out file_header with appropriate info
+// ^^^ this may be its own sub-function?
+
+//determine the file size and the number of records + zero block records to be allocated
+
+//copy the file in byte by byte into each block until filled, if not exact fit into last block of 
+//record >>> add padding
+//^^^ this may be a sub-function
+
+//verbose printing of file completed need to test -v
+
+//add zero blocks record to end of file
+//^^^ this may be a sub-function
+
+//verbose printing of tar completed >>> need to test -v
+
+//return 0 success -1 for failure
+}
+
+
+int archive_tar(int argc, char **argv)
+{
+
+}
+
+
+int update_tar(int argc, char **argv)
+{
+
+}
+
+
+int list_tar(int argc, char **argv, int v_flag)
+{
+
+}
+
+
+int extract_tar(int argc, char **argv, int v_flag)
+{
+
 }
