@@ -41,10 +41,19 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #include "my_printf.h"
 #include "print_error.h"
 
+#define RECORDSIZE 512
+#define NAMESIZE 100
+#define TUNMLEN 32
+#define TGNMLEN 32
+
 //better to use a union? padding needed?
-typedef struct posix_header
+union block {
+
+char content[512];
+
+struct file_header
 {                              /* byte offset */
-  char name[100];               /*   0 */
+  char name[NAMESIZE];               /*   0 */
   char mode[8];                 /* 100 */
   char uid[8];                  /* 108 */
   char gid[8];                  /* 116 */
@@ -55,20 +64,18 @@ typedef struct posix_header
   char linkname[100];           /* 157 */
   char magic[6];                /* 257 */
   char version[2];              /* 263 */
-  char uname[32];               /* 265 */
-  char gname[32];               /* 297 */
+  char uname[TUNMLEN];               /* 265 */
+  char gname[TGNMLEN];               /* 297 */
   char devmajor[8];             /* 329 */
   char devminor[8];             /* 337 */
   char prefix[155];             /* 345 */
                                 /* 500 */
+  char padding[12];             //POTENTIAL PADDING
 }file_header;
-
-typedef struct tar_block {
-    char content[512];
-} tar_block;
+} block;
 
 typedef struct tar_record{
-    tar_block block [20];
+    union block blocks[20];
 } tar_record;
 
 // ??? typedef struct >>> for 2 zero blocks + the 18 of padding
@@ -84,6 +91,21 @@ int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
 int extract_tar(int argc, char **argv, int v_flag);
 
+
+//for things like this will need a pointer to the beginning
+//of the header and then can use pointer arithmetic to get
+//where I need to go
+
+// LIKELY NEED TO CALCULATE CHECKSUM... HERE IS AN EXAMPLE FROM DS
+// / Function to calculate checksum
+// unsigned int calculate_checksum(struct file_header *header) {
+//     unsigned int sum = 0;
+//     char *p = (char *)header;
+//     for (int i = 0; i < RECORDSIZE; i++) {
+//         sum += p[i];
+//     }
+//     return sum;
+// }
 
 int main(int argc, char **argv)
 {
