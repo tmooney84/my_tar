@@ -37,6 +37,8 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
+
 #include "utils.h"
 #include "my_printf.h"
 #include "print_error.h"
@@ -74,6 +76,45 @@ typedef struct block
     char content[512];
 } block;
 
+#define TAR_PERMS 0664 //RW for owner, group & R for others
+
+
+
+#define TMAGIC "ustar" /* ustar and a null */
+#define TMAGLEN 6
+#define TVERSION "00" /* 00 and no null */
+#define TVERSLEN 2
+
+/* Values used in typeflag field.  */
+#define REGTYPE '0'   /* regular file */
+#define AREGTYPE '\0' /* regular file */
+#define LNKTYPE '1'   /* link */
+#define SYMTYPE '2'   /* reserved */
+#define CHRTYPE '3'   /* character special */
+#define BLKTYPE '4'   /* block special */
+#define DIRTYPE '5'   /* directory */
+#define FIFOTYPE '6'  /* FIFO special */
+#define CONTTYPE '7'  /* reserved */
+
+#define XHDTYPE 'x' /* Extended header referring to the \
+                       next file in the archive */
+#define XGLTYPE 'g' /* Global extended header */
+
+/* Bits used in the mode field, values in octal.  */
+#define TSUID 04000   /* set UID on execution */
+#define TSGID 02000   /* set GID on execution */
+#define TSVTX 01000   /* reserved */
+                      /* file permissions */
+#define TUREAD 00400  /* read by owner */
+#define TUWRITE 00200 /* write by owner */
+#define TUEXEC 00100  /* execute/search by owner */
+#define TGREAD 00040  /* read by group */
+#define TGWRITE 00020 /* write by group */
+#define TGEXEC 00010  /* execute/search by group */
+#define TOREAD 00004  /* read by other */
+#define TOWRITE 00002 /* write by other */
+#define TOEXEC 00001  /* execute/search by other */
+
 /*
 Instead create record logic within the functions and set the record so can
 be adjusted
@@ -93,6 +134,7 @@ void free_string_array(char **names, int num_names);
 
 char **create_names_array(int argc, char **argv, int num_names);
 
+int create_file(char *file_name, int flags, int perms);
 int create_tar(char **names, int num_names, int v_flag);
 int append_tar(int argc, char **argv);
 int update_tar(int argc, char **argv);
@@ -136,7 +178,7 @@ int main(int argc, char **argv)
 
     int num_names = argc - num_flag_args + 1;
     char **names = create_names_array(argc, argv, num_names);
-    if(!names)
+    if (!names)
     {
         failed_alloc();
         return -1;
@@ -150,7 +192,7 @@ int main(int argc, char **argv)
     //*********************need to count the number of dashes and redo this section!!! tar -c -f  versus  tar -cf name.tar file_name
     else if (my_strcmp(argv[1], "-cf") == 0)
     {
-        //create_tar(names, num_names, v_flag);
+        // create_tar(names, num_names, v_flag);
     }
     // else if(my_strcmp(argv[1], "-cvf")==0)
     //     {
@@ -159,7 +201,7 @@ int main(int argc, char **argv)
     //     }
     else if (my_strcmp(argv[1], "-rf") == 0)
     {
-       // archive_tar(argc, argv);
+        // archive_tar(argc, argv);
     }
     else if (my_strcmp(argv[1], "-tf") == 0)
     {
@@ -227,6 +269,11 @@ void failed_alloc()
     my_printf("Failed to allocate memory.\n");
 }
 
+void tarball_error(char *tar_name)
+{
+    my_printf("my_tar: Cannot open %s\n", tar_name);
+}
+
 void print_string_array(char **all_names, int num_names)
 {
     for (int i = 0; i < num_names; i++)
@@ -253,7 +300,6 @@ void free_string_array(char **names, int num_names)
 
 char **create_names_array(int argc, char **argv, int num_names)
 {
-
     char **names = malloc((num_names) * sizeof(char *));
     if (!names)
     {
@@ -271,8 +317,7 @@ char **create_names_array(int argc, char **argv, int num_names)
         if (!names[names_index])
         {
             failed_alloc();
-            //return -1;
-            return NULL; 
+            return NULL;
         }
         my_memset(names[names_index], 0, names_len);
 
@@ -284,21 +329,33 @@ char **create_names_array(int argc, char **argv, int num_names)
     return names;
 }
 
-// int create_tar(char **names, int num_names, int v_flag)
+int create_file(char *file_name, int flags, int perms)
+{
+    int fd;
+    if (fd = open(file_name, O_RDWR, perms) == -1)
+    {
+        tarball_error(file_name);
+        return -1;
+    }
+    return fd;
+}
 
-// /*create_tar(char **names, int num_names) >>> first of the list should be the tar file
-//    char* tar_name = names[0]
 
-//    ...create tar file:
-//   initialize_tar_file(tar_name)
-//   {
-//    name_tar_file(tar_name);
-//   }
+create_tar(char **names, int num_names, int v_flag)
+{
+   char* tar_name = names[0];
+   int tar_fd;
+  // ...create tar file:
+  if(tar_fd = create_file(tar_name, O_RDWR, TAR_PERMS) < 0)
+  {
+    tarball_error(tar_name);
+    return 1;
+  }
 
-//    unsigned int needed_space = 0;
+   unsigned int needed_space = 0;
 
-//    for(int i = 1; i < num_names; i++)
-//    {
+   for(int i = 1; i < num_names; i++)
+   {
 //        //check if is file vs dir
 //        file_header_info(names[i]);
 
@@ -331,51 +388,51 @@ char **create_names_array(int argc, char **argv, int num_names)
 //    add_zero_block(tar_file_name.tar);
 //    logic to make sure that the bocks and records align properly
 
-// */
-// {
-
-//     /*
-// determine total size of files + size of headers + 2 "00" 512bytes with padding to determine
-// how many records are needed (20 blocks/ record)
-
-// 1) -create file with the supplied name
-// function: create_file(char *file_name)
-
-// could be more efficient if do a first sweep through gathering the data and building temporary
-// tars
-
-// file 1 ... file 2 ... file 3
-
-// -get info and fill header for file 1, same for file2 and file3... take the size field convert
-// to int (size1 + size2 + size3 + 3 x FH_SIZE is this < 20 blocks use % and if not exact fix need pad the
-// last record and then an addional 2 512 "00" blocks into an additional record)
-
-// sub-functions: fill_header_info(char * file_name) >>> need think about how this will be run recursively for folders
-//                calc_num_records (int file_sizes[argc - non_file_args]) >>> remember int size = sizeof(myArray) / sizeof(myArray[0]);
-//                add_zero_block(tar_file_name.tar);
-//                append_file(char *names)
+//
 
 
+    /*
+determine total size of files + size of headers + 2 "00" 512bytes with padding to determine
+how many records are needed (20 blocks/ record)
 
-// challenges: need to research how to do this recursively for folders
+1) -create file with the supplied name
+function: create_file(char *file_name)
 
-// 2) after gathering file info into header blocks begin to copy the file byte-by-byte
-// into each block until filled, if not exact fit into last block of record >>> add padding
+could be more efficient if do a first sweep through gathering the data and building temporary
+tars
 
-// sub-functions:
-// append_tar(char *tar_file, char *append_file_name) >>> can reuse with update_file fn, just need to include
-// -r flag or do quazi overload... update_file_name >>> same logic just with -r to do conditional on update
+file 1 ... file 2 ... file 3
 
-// verbose printing of file completed need to test -v
+-get info and fill header for file 1, same for file2 and file3... take the size field convert
+to int (size1 + size2 + size3 + 3 x FH_SIZE is this < 20 blocks use % and if not exact fix need pad the
+last record and then an addional 2 512 "00" blocks into an additional record)
 
-// add zero blocks record to end of file
-// ^^^ this may be a sub-function
+sub-functions: fill_header_info(char * file_name) >>> need think about how this will be run recursively for folders
+               calc_num_records (int file_sizes[argc - non_file_args]) >>> remember int size = sizeof(myArray) / sizeof(myArray[0]);
+               add_zero_block(tar_file_name.tar);
+               append_file(char *names)
 
-// verbose printing of tar completed >>> need to test -v
 
-// return 0 success -1 for failure
-// */
-// }
+
+challenges: need to research how to do this recursively for folders
+
+2) after gathering file info into header blocks begin to copy the file byte-by-byte
+into each block until filled, if not exact fit into last block of record >>> add padding
+
+sub-functions:
+append_tar(char *tar_file, char *append_file_name) >>> can reuse with update_file fn, just need to include
+-r flag or do quazi overload... update_file_name >>> same logic just with -r to do conditional on update
+
+verbose printing of file completed need to test -v
+
+add zero blocks record to end of file
+^^^ this may be a sub-function
+
+verbose printing of tar completed >>> need to test -v
+
+return 0 success -1 for failure
+*/
+}
 
 // int archive_tar(int argc, char **argv)
 
@@ -388,7 +445,6 @@ char **create_names_array(int argc, char **argv, int num_names)
 //     add_zero_block(tar_file_name.tar);
 //     logic to make sure that the bocks and records align properly
 // }
-
 
 // int update_tar(int argc, char **argv)
 // {
