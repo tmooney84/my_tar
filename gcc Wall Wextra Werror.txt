@@ -1,0 +1,2 @@
+gcc -Wall -Wextra -Werror -g -std=c99 -c main.c -o main.o
+gcc -Wall -Wextra -Werror -g -std=c99 -o my_tar main.o utils.o print_error.o my_printf.o
