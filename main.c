@@ -46,53 +46,62 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #define TUNMLEN 32
 #define TGNMLEN 32
 
-//better to use a union? padding needed?
-union block {
-char content[512];
-struct file_header
-{                              /* byte offset */
-  char name[NAMESIZE];               /*   0 */
-  char mode[8];                 /* 100 */
-  char uid[8];                  /* 108 */
-  char gid[8];                  /* 116 */
-  char size[12];                /* 124 */
-  char mtime[12];               /* 136 */
-  char chksum[8];               /* 148 */
-  char typeflag;                /* 156 */
-  char linkname[100];           /* 157 */
-  char magic[6];                /* 257 */
-  char version[2];              /* 263 */
-  char uname[TUNMLEN];               /* 265 */
-  char gname[TGNMLEN];               /* 297 */
-  char devmajor[8];             /* 329 */
-  char devminor[8];             /* 337 */
-  char prefix[155];             /* 345 */
-                                /* 500 */
-  char padding[12];             //POTENTIAL PADDING
-}file_header;
+// better to use a union? padding needed?
+typedef struct file_header
+{                        /* byte offset */
+    char name[NAMESIZE]; /*   0 */
+    char mode[8];        /* 100 */
+    char uid[8];         /* 108 */
+    char gid[8];         /* 116 */
+    char size[12];       /* 124 */
+    char mtime[12];      /* 136 */
+    char chksum[8];      /* 148 */
+    char typeflag;       /* 156 */
+    char linkname[100];  /* 157 */
+    char magic[6];       /* 257 */
+    char version[2];     /* 263 */
+    char uname[TUNMLEN]; /* 265 */
+    char gname[TGNMLEN]; /* 297 */
+    char devmajor[8];    /* 329 */
+    char devminor[8];    /* 337 */
+    char prefix[155];    /* 345 */
+                         /* 500 */
+    char padding[12];    // POTENTIAL PADDING
+} file_header;
+
+typedef struct block
+{
+    char content[512];
 } block;
+
+/*
+Instead create record logic within the functions and set the record so can
+be adjusted
 
 typedef struct tar_record{
     union block blocks[20];
-} tar_record;
+}tar_record;
+*/
 
 // ??? typedef struct >>> for 2 zero blocks + the 18 of padding
 
 void flag_error();
-void file_error(char * file_name);
+void file_error(char *file_name);
 void failed_alloc();
 void print_string_array(char **all_names, int num_names);
 void free_string_array(char **names, int num_names);
-int create_tar(int argc, char ** argv, int v_flag);
+
+char **create_names_array(int argc, char **argv, int num_names);
+
+int create_tar(char **names, int num_names, int v_flag);
 int append_tar(int argc, char **argv);
 int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
 int extract_tar(int argc, char **argv, int v_flag);
 
-
-//for things like this will need a pointer to the beginning
-//of the header and then can use pointer arithmetic to get
-//where I need to go
+// for things like this will need a pointer to the beginning
+// of the header and then can use pointer arithmetic to get
+// where I need to go
 
 // LIKELY NEED TO CALCULATE CHECKSUM... HERE IS AN EXAMPLE FROM DS
 // / Function to calculate checksum
@@ -105,10 +114,9 @@ int extract_tar(int argc, char **argv, int v_flag);
 //     return sum;
 // }
 
-
 // tar -czf -t >>> will throw error
-//parse the files but if already c_flag, etc. is 1 then file_error(argv[i])
-//if t then cannot have c, r, t, u, x ... but needs f
+// parse the files but if already c_flag, etc. is 1 then file_error(argv[i])
+// if t then cannot have c, r, t, u, x ... but needs f
 // -f to parse file correctly
 
 int main(int argc, char **argv)
@@ -120,106 +128,87 @@ int main(int argc, char **argv)
     int t_flag = 0;
     int u_flag = 0;
     int x_flag = 0;
-    
+
     int v_flag = 0;
     int z_flag = 0;
     int j_flag = 0;
-    int num_flag_args = 0;
-    
+    int num_flag_args = 1; // for now is 1 to make it work
+
+    int num_names = argc - num_flag_args + 1;
+    char **names = create_names_array(argc, argv, num_names);
+    if(!names)
+    {
+        failed_alloc();
+        return -1;
+    }
+
     if (argc == 1)
     {
         flag_error();
         return -1;
     }
-//*********************need to count the number of dashes and redo this section!!! tar -c -f  versus  tar -cf name.tar file_name
-else if(my_strcmp(argv[1], "-cf")==0)
+    //*********************need to count the number of dashes and redo this section!!! tar -c -f  versus  tar -cf name.tar file_name
+    else if (my_strcmp(argv[1], "-cf") == 0)
     {
-        create_tar(argc, argv, v_flag);
+        //create_tar(names, num_names, v_flag);
     }
-// else if(my_strcmp(argv[1], "-cvf")==0)
-//     {
-//         v_flag = 1;
-//         create_tar(argc, argv, v_flag);
-//     }
-else if(my_strcmp(argv[1], "-rf")==0)
+    // else if(my_strcmp(argv[1], "-cvf")==0)
+    //     {
+    //         v_flag = 1;
+    //         create_tar(argc, argv, v_flag);
+    //     }
+    else if (my_strcmp(argv[1], "-rf") == 0)
     {
-        archive_tar(argc, argv);
+       // archive_tar(argc, argv);
     }
-else if(my_strcmp(argv[1], "-tf")==0)
+    else if (my_strcmp(argv[1], "-tf") == 0)
     {
         t_flag = 1;
         f_flag = 1;
     }
-// else if(my_strcmp(argv[1], "-tvf")==0)
-//     {
-//         t_flag = 1;
-//         v_flag = 1;
-//         f_flag = 1;
-//     }
-else if(my_strcmp(argv[1], "-uf")==0)
+    // else if(my_strcmp(argv[1], "-tvf")==0)
+    //     {
+    //         t_flag = 1;
+    //         v_flag = 1;
+    //         f_flag = 1;
+    //     }
+    else if (my_strcmp(argv[1], "-uf") == 0)
     {
         u_flag = 1;
         f_flag = 1;
-    }   
-else if(my_strcmp(argv[1], "-xf")==0)
+    }
+    else if (my_strcmp(argv[1], "-xf") == 0)
     {
         x_flag = 1;
         f_flag = 1;
     }
-// else if(my_strcmp(argv[1], "-xvf")==0)
-//     {
-//         x_flag = 1;
-//         v_flag = 1;
-//         f_flag = 1;
-//     }
+    // else if(my_strcmp(argv[1], "-xvf")==0)
+    //     {
+    //         x_flag = 1;
+    //         v_flag = 1;
+    //         f_flag = 1;
+    //     }
 
-else
-{
-    flag_error();
-    return -1;
-}
+    else
+    {
+        flag_error();
+        return -1;
+    }
 
     my_printf("argc: %d\n", argc);
     my_printf("c: %d, f: %d, j: %d, r: %d, t: %d, u: %d, v: %d, x: %d, z: %d\n", c_flag, f_flag, j_flag, r_flag, t_flag, u_flag, v_flag, x_flag, z_flag);
 
-//*** NEED TO IMPLEMENT num_flag_args ABOVE */
-    char ** names = malloc ((argc - num_flag_args + 1) * sizeof(char *));
-    if(!names)
-    {  
-        failed_alloc(); 
-        return -1;
-    }
-    my_memset(names, 0, (argc - num_flag_args + 1) * (sizeof(char *)));
+    //*** NEED TO IMPLEMENT num_flag_args ABOVE */
 
-    int names_index = 0;
+    // argv[2]
+    // test whether string file or folder if not error
 
-    for(int i = num_flag_args + 1; i < argc; i++)
-    {   
-        int names_len = my_strlen(argv[i]);
-        names[names_index] = malloc((my_strlen(argv[i]) + 1) * sizeof(char));  
-        if(!names[names_index])
-        {
-            failed_alloc();
-            return -1;
-        } 
-        my_memset(names[names_index], 0, names_len);
+    //-cf -rf -uf      create archive? add to archive? add to archive if update (stat time conditional)? >>>
+    // this could all be one fn w flags
 
-        my_strncpy(names[names_index], argv[i], names_len);
-        names_index++;
-    }
+    // print out archive contents >>> additional function
 
-    print_string_array(names, names_index);
-
-
-//argv[2]
-//test whether string file or folder if not error
-
-//-cf -rf -uf      create archive? add to archive? add to archive if update (stat time conditional)? >>> 
-//this could all be one fn w flags
-
-//print out archive contents >>> additional function
-
-//extract archive
+    // extract archive
     return 0;
 }
 
@@ -228,17 +217,15 @@ void flag_error()
     my_printf("tar: You must specify one of the '-Acdtrux', '--delete' or '--test-label' options\nTry 'tar --help' or 'tar --usage' for more information.");
 }
 
-
-void file_error(char * file_name)
+void file_error(char *file_name)
 {
-    print_error("my_tar: %s: Cannot stat: No such file or directory", file_name); 
+    print_error("my_tar: %s: Cannot stat: No such file or directory", file_name);
 }
 
 void failed_alloc()
-{       
+{
     my_printf("Failed to allocate memory.\n");
 }
-
 
 void print_string_array(char **all_names, int num_names)
 {
@@ -258,159 +245,185 @@ void free_string_array(char **names, int num_names)
 
     for (int i = 0; i < num_names; i++)
     {
-        free(names[i]);  // Free each dynamically allocated string
+        free(names[i]); // Free each dynamically allocated string
     }
 
     free(names);
-} 
+}
 
+char **create_names_array(int argc, char **argv, int num_names)
+{
 
-void create_tar(int argc, char ** argv, int v_flag)
-
- /*create_tar(char **names, int num_names) >>> first of the list should be the tar file
-    char* tar_name = names[0]
-
-    ...create tar file:  
-   initialize_tar_file(tar_name)
-   {
-    name_tar_file(tar_name);
-   }
-
-    unsigned int needed_space = 0;
-
-    for(int i = 1; i < num_names; i++)
+    char **names = malloc((num_names) * sizeof(char *));
+    if (!names)
     {
-        //check if is file vs dir
-        file_header_info(names[i]);
+        failed_alloc();
+        return NULL;
+    }
+    my_memset(names, 0, (num_names) * (sizeof(char *)));
 
-        if(names[i] filetype is a file)
+    int names_index = 0;
+
+    for (int i = argc - num_names; i < argc; i++)
+    {
+        int names_len = my_strlen(argv[i]);
+        names[names_index] = malloc((my_strlen(argv[i]) + 1) * sizeof(char));
+        if (!names[names_index])
         {
-            append_file();  >>> includes  fill_header(names[i]);>>> MAKE SURE TO START APPENDING WRITE WHEN ZERO PADDING STARTS AND MAKE
-        
-            ADJUSTMENTS ACCORDINGLY 
+            failed_alloc();
+            //return -1;
+            return NULL; 
         }
-        //if dir then need to go in recursively
-        {
-        recursive into directory and sub-directories
-        {
-        
-        if(names[i] filetype is a direcory)
-                    (recursively for files in folders and sub_folders)
-        { 
-            file_header_info(directory_name);
+        my_memset(names[names_index], 0, names_len);
 
-            do the same for each file in the directory... recursively
-            file_header_info(file_name);
-            append_file() >>> for each file in the directories
-        } 
-         }
-            } 
+        my_strncpy(names[names_index], argv[i], names_len);
+        names_index++;
     }
 
-    //add two zero blocks to end of file >>> this could be part of the append_file function at end
-    add_zero_block(tar_file_name.tar);
-    add_zero_block(tar_file_name.tar);
-    logic to make sure that the bocks and records align properly
-
-*/
-{
-
-
-
-    /*
-determine total size of files + size of headers + 2 "00" 512bytes with padding to determine
-how many records are needed (20 blocks/ record)
-
-1) -create file with the supplied name
-function: create_file(char *file_name)
-
-could be more efficient if do a first sweep through gathering the data and building temporary
-tars
-
-file 1 ... file 2 ... file 3
-
--get info and fill header for file 1, same for file2 and file3... take the size field convert 
-to int (size1 + size2 + size3 + 3 x FH_SIZE is this < 20 blocks use % and if not exact fix need pad the 
-last record and then an addional 2 512 "00" blocks into an additional record)
-
-sub-functions: fill_header_info(char * file_name) >>> need think about how this will be run recursively for folders 
-               calc_num_records (int file_sizes[argc - non_file_args]) >>> remember int size = sizeof(myArray) / sizeof(myArray[0]);
-               add_zero_block(tar_file_name.tar);
-               append_file(char *names)
-
-
-
-challenges: need to research how to do this recursively for folders
-
-2) after gathering file info into header blocks begin to copy the file byte-by-byte
-into each block until filled, if not exact fit into last block of record >>> add padding
-
-sub-functions: 
-append_tar(char *tar_file, char *append_file_name) >>> can reuse with update_file fn, just need to include
--r flag or do quazi overload... update_file_name >>> same logic just with -r to do conditional on update
-
-verbose printing of file completed need to test -v
-
-add zero blocks record to end of file
-^^^ this may be a sub-function
-
-verbose printing of tar completed >>> need to test -v
-
-return 0 success -1 for failure
-*/
+    print_string_array(names, names_index);
+    return names;
 }
 
+// int create_tar(char **names, int num_names, int v_flag)
 
-int append_tar(int argc, char **argv)
+// /*create_tar(char **names, int num_names) >>> first of the list should be the tar file
+//    char* tar_name = names[0]
 
- //append_tar(char **names, int num_names) >>> first of the list should be the tar file
-{
-    /*
-    append_file(char **names, int num_names); >>> includes the 2 x zero blocks 
-    //add two zero blocks to end of file >>> this could be part of the append_file function at end
-    add_zero_block(tar_file_name.tar);
-    add_zero_block(tar_file_name.tar);
-    logic to make sure that the bocks and records align properly
-}
+//    ...create tar file:
+//   initialize_tar_file(tar_name)
+//   {
+//    name_tar_file(tar_name);
+//   }
+
+//    unsigned int needed_space = 0;
+
+//    for(int i = 1; i < num_names; i++)
+//    {
+//        //check if is file vs dir
+//        file_header_info(names[i]);
+
+//        if(names[i] filetype is a file)
+//        {
+//            append_file();  >>> includes  fill_header(names[i]);>>> MAKE SURE TO START APPENDING WRITE WHEN ZERO PADDING STARTS AND MAKE
+
+//            ADJUSTMENTS ACCORDINGLY
+//        }
+//        //if dir then need to go in recursively
+//        {
+//        recursive into directory and sub-directories
+//        {
+
+//        if(names[i] filetype is a direcory)
+//                    (recursively for files in folders and sub_folders)
+//        {
+//            file_header_info(directory_name);
+
+//            do the same for each file in the directory... recursively
+//            file_header_info(file_name);
+//            append_file() >>> for each file in the directories
+//        }
+//         }
+//            }
+//    }
+
+//    //add two zero blocks to end of file >>> this could be part of the append_file function at end
+//    add_zero_block(tar_file_name.tar);
+//    add_zero_block(tar_file_name.tar);
+//    logic to make sure that the bocks and records align properly
+
+// */
+// {
+
+//     /*
+// determine total size of files + size of headers + 2 "00" 512bytes with padding to determine
+// how many records are needed (20 blocks/ record)
+
+// 1) -create file with the supplied name
+// function: create_file(char *file_name)
+
+// could be more efficient if do a first sweep through gathering the data and building temporary
+// tars
+
+// file 1 ... file 2 ... file 3
+
+// -get info and fill header for file 1, same for file2 and file3... take the size field convert
+// to int (size1 + size2 + size3 + 3 x FH_SIZE is this < 20 blocks use % and if not exact fix need pad the
+// last record and then an addional 2 512 "00" blocks into an additional record)
+
+// sub-functions: fill_header_info(char * file_name) >>> need think about how this will be run recursively for folders
+//                calc_num_records (int file_sizes[argc - non_file_args]) >>> remember int size = sizeof(myArray) / sizeof(myArray[0]);
+//                add_zero_block(tar_file_name.tar);
+//                append_file(char *names)
 
 
-int update_tar(int argc, char **argv)
-{
-if(new_file.modification_time > old_file.modification_time)
-{
-append_file() >>> with same logic as append_tar
-}
-}
-update/append_file(char *tar_file, char *append_file_name) >>> can reuse with update_file fn, just need to include
--r flag or do quazi overload... update_file_name >>> same logic just with -r to do conditional on update
 
-*/
-}
+// challenges: need to research how to do this recursively for folders
 
+// 2) after gathering file info into header blocks begin to copy the file byte-by-byte
+// into each block until filled, if not exact fit into last block of record >>> add padding
 
-int list_tar(int argc, char **argv, int v_flag)
-{
-/*cycle through testing whether type is file or directory, if directory add '/' to end when 
-print to screen; rely '/' on the dir1/file3.txt to skip to know
-whether it is a file or a path
-*/
-}
+// sub-functions:
+// append_tar(char *tar_file, char *append_file_name) >>> can reuse with update_file fn, just need to include
+// -r flag or do quazi overload... update_file_name >>> same logic just with -r to do conditional on update
 
+// verbose printing of file completed need to test -v
 
-int extract_tar(int argc, char **argv, int v_flag)
-{
-/*
-cycle through file to find headers until hit the two zero blocks
-   until end of tar 
-    if file: create(overwrite?) file after fast forwarding through to file beginning in tar and 
-    run the copy as far as the end of the archived file
+// add zero blocks record to end of file
+// ^^^ this may be a sub-function
 
-    if dir: create dir with header ...contained files should be named "dir1/file1.txt" so should
-    picked up by the previous logic
-*/
-}
+// verbose printing of tar completed >>> need to test -v
+
+// return 0 success -1 for failure
+// */
+// }
+
+// int archive_tar(int argc, char **argv)
+
+// // append_tar(char **names, int num_names) >>> first of the list should be the tar file
+// {
+//     /*
+//     append_file(char **names, int num_names); >>> includes the 2 x zero blocks
+//     //add two zero blocks to end of file >>> this could be part of the append_file function at end
+//     add_zero_block(tar_file_name.tar);
+//     add_zero_block(tar_file_name.tar);
+//     logic to make sure that the bocks and records align properly
+// }
 
 
-//adding verbose to these just have a print and with ifv_flag)
+// int update_tar(int argc, char **argv)
+// {
+// if(new_file.modification_time > old_file.modification_time)
+// {
+// append_file() >>> with same logic as append_tar
+// }
+// }
+// update/append_file(char *tar_file, char *append_file_name) >>> can reuse with update_file fn, just need to include
+// -r flag or do quazi overload... update_file_name >>> same logic just with -r to do conditional on update
 
-//zip would be additional logic>>> some form of api
+// */
+// }
+
+// int list_tar(int argc, char **argv, int v_flag)
+// {
+//     /*cycle through testing whether type is file or directory, if directory add '/' to end when
+//     print to screen; rely '/' on the dir1/file3.txt to skip to know
+//     whether it is a file or a path
+//     */
+// }
+
+// int extract_tar(int argc, char **argv, int v_flag)
+// {
+//     /*
+//     cycle through file to find headers until hit the two zero blocks
+//        until end of tar
+//         if file: create(overwrite?) file after fast forwarding through to file beginning in tar and
+//         run the copy as far as the end of the archived file
+
+//         if dir: create dir with header ...contained files should be named "dir1/file1.txt" so should
+//         picked up by the previous logic
+//     */
+// }
+
+// // adding verbose to these just have a print and with ifv_flag)
+
+// // zip would be additional logic>>> some form of api
