@@ -355,8 +355,10 @@ header *fill_header_info(char * file)
     //failed_alloc(); ???
     return NULL;
    }   
+   my_memset(file_header, 0, sizeof(header)); // Zero out the memory
+   my_strlen(file);
 
-   file_header->name = file; 
+   my_strncpy(file_header->name,file, NAMESIZE-1); 
 }
 
 
