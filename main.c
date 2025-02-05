@@ -380,6 +380,7 @@ header *fill_header_info(char *file)
     //     char prefix[155];    /* 345 */
     //                          /* 500 */
     //     char padding[12];
+    return file_header;
 }
 int append_file(int tar_fd, char *append_file)
 {
@@ -392,6 +393,7 @@ int append_file(int tar_fd, char *append_file)
     // after writing file_header info to file FREE file_header !!!
     // includes  fill_header(names[i]);>>> MAKE SURE TO START APPENDING WRITE WHEN ZERO PADDING STARTS AND MAKE
 
+    free(file_header);
     return 0; // if successful may need conditional logic
 }
 
