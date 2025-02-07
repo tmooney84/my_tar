@@ -50,13 +50,15 @@ void fill_gid(char *file, struct stat file_stats, header *file_header);
 void fill_size(char *file, struct stat file_stats, header *file_header);
 void fill_mtime(char *file, struct stat file_stats, header *file_header);
 void fill_typeflag(char *file, struct stat file_stats, header *file_header);
+void fill_linkname(char *file, struct stat file_stats, header *file_header);
 
 void ld_to_string(long int number, char string[], int os_size);
 void int_to_oct_string(int number, char octal_string[], int os_size);
 
 int main()
 {
-    header *test_header = fill_header_info("my_printf.c");
+    //header *test_header = fill_header_info("my_printf.c");
+    header *test_header = fill_header_info("link_to_myprint");
     if (!test_header)
     {
         printf("Error... try again");
@@ -73,6 +75,8 @@ int main()
     printf("File GID: %s\n", test_header->gid);
     printf("File Size: %s\n", test_header->size);
     printf("File mtime: %s\n", test_header->mtime);
+    printf("File typeflag: %c\n", test_header->typeflag);
+    printf("File linkname: %s\n", test_header->linkname);
 
     free(test_header);
     return 0;
@@ -95,6 +99,15 @@ header *fill_header_info(char *file)
     }
     my_memset(file_header, 0, sizeof(header)); // Zero out the memory
 
+    //may need to return an int on these functions
+    //use -1 for failure and 
+    //maybe use something like this:
+//     enum ErrorCode {
+//     SUCCESS = 0,
+//     FILE_NOT_FOUND_ERROR,
+//     MEMORY_ALLOCATION_ERROR,
+//     // ... more error codes
+// };
     fill_name(file, file_header);
     fill_mode(file, file_stats, file_header);
     fill_uid(file, file_stats, file_header);
@@ -102,10 +115,10 @@ header *fill_header_info(char *file)
     fill_size(file, file_stats, file_header);
     fill_mtime(file, file_stats, file_header);
     fill_typeflag(file, file_stats, file_header);
+    fill_linkname(file, file_stats, file_header);
 
     return file_header;
-
-    }
+}
 
 void int_to_oct_string(int number, char octal_string[], int os_size)
 {
@@ -117,7 +130,6 @@ void int_to_oct_string(int number, char octal_string[], int os_size)
     printf("octal_string: %s\n", octal_string);
 }
 
-
 void ld_to_string(long int number, char string[], int os_size)
 {
     for (int i = os_size - 2; i >= 0; i--)
@@ -127,7 +139,6 @@ void ld_to_string(long int number, char string[], int os_size)
     }
     printf("dec_string: %s\n", string);
 }
-
 
 // char name[NAMESIZE]; /*   0 */
 void fill_name(char *file, header *file_header)
@@ -174,7 +185,6 @@ void fill_uid(char *file, struct stat file_stats, header *file_header)
     my_strncpy(file_header->uid, octal_string, 8);
 }
 
-
 //     char gid[8];         /* 116 */
 void fill_gid(char *file, struct stat file_stats, header *file_header)
 {
@@ -192,8 +202,7 @@ void fill_gid(char *file, struct stat file_stats, header *file_header)
     my_strncpy(file_header->gid, octal_string, 8);
 }
 
-
-    //     char size[12];       /* 124 */
+//     char size[12];       /* 124 */
 void fill_size(char *file, struct stat file_stats, header *file_header)
 {
     if (stat(file, &file_stats) == -1)
@@ -209,8 +218,7 @@ void fill_size(char *file, struct stat file_stats, header *file_header)
     my_strncpy(file_header->size, string, 12);
 }
 
-
-    //     char mtime[12];      /* 136 */
+//     char mtime[12];      /* 136 */
 void fill_mtime(char *file, struct stat file_stats, header *file_header)
 {
     if (stat(file, &file_stats) == -1)
@@ -227,41 +235,80 @@ void fill_mtime(char *file, struct stat file_stats, header *file_header)
 }
 
 //     char chksum[8];      /* 148 */
-//DO AT THE END!!!!!!!
+// DO AT THE END!!!!!!!
 
-
-    //     char typeflag;       /* 156 */
- void fill_typeflag(char *file, struct stat file_stats, header *file_header)
+//     char typeflag;       /* 156 */
+void fill_typeflag(char *file, struct stat file_stats, header *file_header)
 {
     if (stat(file, &file_stats) == -1)
     {
         return;
     }
-    //S_IFMT is a macro for 0170000 Mask to filter out file bits
-    mode_t file_stats_mode = file_stats.st_mode & __S_IFMT;
-    int result_mode = (int)file_stats_mode;
+    // S_IFMT is a macro for 0170000 Mask to filter out permission bits
+    switch (file_stats.st_mode & __S_IFMT)
+    {
+    case __S_IFREG:
+        file_header->typeflag = '0';
+        break; // Regular File
+    case __S_IFLNK:
+        file_header->typeflag = '2';
+        break; // Symbolic Link
+    case __S_IFCHR:
+        file_header->typeflag = '3';
+        break; // Character Device
+    case __S_IFBLK:
+        file_header->typeflag = '4';
+        break; // Block Device
+    case __S_IFDIR:
+        file_header->typeflag = '5';
+        break; // Directory
+    case __S_IFIFO:
+        file_header->typeflag = '6';
+        break; // FIFO (named pipe)
+    default:
+        file_header->typeflag = '\0';
+        break; // Regular File
+    }
+}
 
-    printf("File Type: %o\n", result_mode); 
-    //char octal_string[8];
-   // my_memset(octal_string, 0, 8);
 
-    //octal_string[7] = '\0';
-
-//    int_to_oct_string(result_mode, octal_string, 8);
-    //my_strncpy(file_header->mode, octal_string, 8);
-}   
+//     char linkname[100];  /* 157 */
 
 
+void fill_linkname(char *file, struct stat file_stats, header *file_header)
+{
+        if (lstat(file, &file_stats) == -1)
+    {
+        return;
+    }
+
+    if(S_ISLNK(file_stats.st_mode))
+    {
+        ssize_t file_len = readlink(file, file_header->linkname, sizeof(file_header->linkname) -1);
+        if(file_len == -1)
+        {
+            return;
+        }
+        file_header->linkname[file_len] = '\0';
+    }
+    else
+    {
+        file_header->linkname[0] = '\0';
+    }
+    printf("linkname: %s", file_header->linkname);
+}
 
 
 
-    //     char linkname[100];  /* 157 */
-    //     char magic[6];       /* 257 */
-    //     char version[2];     /* 263 */
-    //     char uname[TUNMLEN]; /* 265 */
-    //     char gname[TGNMLEN]; /* 297 */
-    //     char devmajor[8];    /* 329 */
-    //     char devminor[8];    /* 337 */
-    //     char prefix[155];    /* 345 */
-    //                          /* 500 */
-    //     char padding[12];
+
+
+
+//     char magic[6];       /* 257 */
+//     char version[2];     /* 263 */
+//     char uname[TUNMLEN]; /* 265 */
+//     char gname[TGNMLEN]; /* 297 */
+//     char devmajor[8];    /* 329 */
+//     char devminor[8];    /* 337 */
+//     char prefix[155];    /* 345 */
+//                          /* 500 */
+//     char padding[12];

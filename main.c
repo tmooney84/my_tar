@@ -51,7 +51,7 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 // better to use a union? padding needed?
 typedef struct header
 {                        /* byte offset */
-    char name[NAMESIZE]; /*   0 */
+    char name[NAMESIZE]; /*   0 null-term string*/
     char mode[8];        /* 100 */
     char uid[8];         /* 108 */
     char gid[8];         /* 116 */
@@ -60,10 +60,10 @@ typedef struct header
     char chksum[8];      /* 148 */
     char typeflag;       /* 156 */
     char linkname[100];  /* 157 */
-    char magic[6];       /* 257 */
+    char magic[6];       /* 257 null-term string*/ 
     char version[2];     /* 263 */
-    char uname[TUNMLEN]; /* 265 */
-    char gname[TGNMLEN]; /* 297 */
+    char uname[TUNMLEN]; /* 265 null-term string*/
+    char gname[TGNMLEN]; /* 297 null-term string*/
     char devmajor[8];    /* 329 */
     char devminor[8];    /* 337 */
     char prefix[155];    /* 345 */
