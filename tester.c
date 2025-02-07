@@ -59,6 +59,7 @@ void fill_mtime(char *file, struct stat file_stats, header *file_header);
 void fill_typeflag(char *file, struct stat file_stats, header *file_header);
 void fill_linkname(char *file, struct stat file_stats, header *file_header);
 void fill_uname(char *file, struct stat file_stats, header *file_header);
+void fill_gname(char *file, struct stat file_stats, header *file_header);
 
 void ld_to_string(long int number, char string[], int os_size);
 void int_to_oct_string(int number, char octal_string[], int os_size);
@@ -89,6 +90,7 @@ int main()
     printf("File magic: %s\n", test_header->magic);
     printf("File version: %.2s\n", test_header->version);
     printf("File uname: %s\n", test_header->uname);
+    printf("File gname: %s\n", test_header->gname);
 
     free(test_header);
     return 0;
@@ -138,8 +140,11 @@ header *fill_header_info(char *file)
     //     char version[2];     /* 263 */
     file_header->version[0] = '0';
     file_header->version[1] = '0';
-//null terminator needed???? ^^^
-    return file_header;
+
+    fill_gname(file, file_stats, file_header);
+
+
+return file_header;
 }
 
 void int_to_oct_string(int number, char octal_string[], int os_size)
@@ -339,8 +344,34 @@ void fill_uname(char *file, struct stat file_stats, header *file_header)
 }
 
 //     char gname[TGNMLEN]; /* 297 */
+void fill_gname(char *file, struct stat file_stats, header *file_header)
+{
+    if (stat(file, &file_stats) == -1)
+    {
+        return;
+    }
+
+    struct group *grp = getgrgid(file_stats.st_gid);
+    if (grp)
+    {
+        my_strncpy(file_header->gname, grp->gr_name, TGNMLEN - 1);
+    }
+    else
+    {
+        my_strncpy(file_header->gname, "unknown", TGNMLEN - 1);
+    }
+
+    file_header->gname[TGNMLEN - 1] = '\0';
+}
+
 
 //     char devmajor[8];    /* 329 */
+
+
+
+
+
+
 //     char devminor[8];    /* 337 */
 //     char prefix[155];    /* 345 */
 //                          /* 500 */
