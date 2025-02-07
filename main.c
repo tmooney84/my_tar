@@ -49,6 +49,7 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #define NAMESIZE 100
 #define TUNMLEN 32
 #define TGNMLEN 32
+#define PREFIXSIZE 155
 
 // better to use a union? padding needed?
 typedef struct header

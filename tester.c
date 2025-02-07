@@ -17,6 +17,7 @@
 #define NAMESIZE 100
 #define TUNMLEN 32
 #define TGNMLEN 32
+#define PREFIXSIZE 155
 
 #define TMAGIC "ustar" /* ustar and a null */
 #define TMAGLEN 6
@@ -76,7 +77,8 @@ int main()
         printf("Error... try again");
         return 1;
     }
-
+    my_memset(test_header, 0, sizeof(header)); // Zero out the memory
+    
     printf("pid_t: %zu\n", sizeof(pid_t));
     printf("uid_t: %zu\n", sizeof(uid_t));
     printf("gid_t: %zu\n", sizeof(gid_t));
@@ -96,6 +98,7 @@ int main()
     printf("File gname: %s\n", test_header->gname);
     printf("File devmajor: %s\n", test_header->devmajor);
     printf("File devminor: %s\n", test_header->devminor);
+    printf("File prefix: %s\n", test_header->prefix);
 
     free(test_header);
     return 0;
@@ -174,10 +177,34 @@ void ld_to_string(long int number, char string[], int os_size)
 }
 
 // char name[NAMESIZE]; /*   0 */
+//     char prefix[155];    /* 345 */
+//                          /* 500 */
 void fill_name(char *file, header *file_header)
 {
-    int file_size = (my_strlen(file) < NAMESIZE - 1) ? my_strlen(file) : NAMESIZE - 1;
-    my_strncpy(file_header->name, file, file_size);
+    int file_size = my_strlen(file);
+
+    if (file_size < NAMESIZE)
+    {
+        my_strncpy(file_header->name, file, file_size);
+        file_header->name[file_size] = '\0';
+        my_memset(file_header->prefix, 0, 155);
+    }
+    else
+    {
+        if(strlen(file) > )
+
+        // my_strncpy(file_header->name, file, NAMESIZE - 1);
+        // file_header->name[NAMESIZE - 1] = '\0'; 
+        
+        // int prefix_size = file_size - (NAMESIZE -1);
+        // if(prefix_size >= PREFIXSIZE)
+        // {
+        //     prefix_size = PREFIXSIZE -1;
+        // }
+
+        // my_strncpy(file_header->prefix, file + (NAMESIZE - 1), prefix_size);
+        // file_header->name[prefix_size] = '\0'; 
+    }
 }
 
 //     char mode[8];        /* 100 */
@@ -305,7 +332,6 @@ void fill_typeflag(char *file, struct stat file_stats, header *file_header)
 }
 
 //     char linkname[100];  /* 157 */
-
 void fill_linkname(char *file, struct stat file_stats, header *file_header)
 {
     if (lstat(file, &file_stats) == -1)
@@ -381,7 +407,6 @@ void fill_devmajor(char *file, struct stat file_stats, header *file_header)
     int_to_oct_string(file_devmajor, file_header->devmajor, 8);
 }
 
-
 //     char devminor[8];    /* 337 */
 void fill_devminor(char *file, struct stat file_stats, header *file_header)
 {
@@ -393,16 +418,3 @@ void fill_devminor(char *file, struct stat file_stats, header *file_header)
     int_to_oct_string(file_devminor, file_header->devminor, 8);
 }
 
-//     char prefix[155];    /* 345 */
-//                          /* 500 */
-void fill_prefix(char *file, struct stat file_stats, header *file_header)
-{
-    if (stat(file, &file_stats) == -1)
-    {
-        return;
-    }
-    
-}
-
-
-//     char padding[12];
