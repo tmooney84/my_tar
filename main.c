@@ -38,6 +38,8 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <pwd.h>  
+#include <grp.h>
 
 #include "utils.h"
 #include "my_printf.h"

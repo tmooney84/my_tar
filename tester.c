@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <pwd.h>
+#include <grp.h>
 
 #include "utils.h"
 
@@ -14,6 +16,11 @@
 #define NAMESIZE 100
 #define TUNMLEN 32
 #define TGNMLEN 32
+
+#define TMAGIC "ustar" /* ustar and a null */
+#define TMAGLEN 6
+#define TVERSION "00" /* 00 and no null */
+#define TVERSLEN 2
 
 typedef struct header
 {                        /* byte offset */
@@ -51,13 +58,14 @@ void fill_size(char *file, struct stat file_stats, header *file_header);
 void fill_mtime(char *file, struct stat file_stats, header *file_header);
 void fill_typeflag(char *file, struct stat file_stats, header *file_header);
 void fill_linkname(char *file, struct stat file_stats, header *file_header);
+void fill_uname(char *file, struct stat file_stats, header *file_header);
 
 void ld_to_string(long int number, char string[], int os_size);
 void int_to_oct_string(int number, char octal_string[], int os_size);
 
 int main()
 {
-    //header *test_header = fill_header_info("my_printf.c");
+    // header *test_header = fill_header_info("my_printf.c");
     header *test_header = fill_header_info("link_to_myprint");
     if (!test_header)
     {
@@ -75,8 +83,12 @@ int main()
     printf("File GID: %s\n", test_header->gid);
     printf("File Size: %s\n", test_header->size);
     printf("File mtime: %s\n", test_header->mtime);
+    printf("File chksum: ??? \n");
     printf("File typeflag: %c\n", test_header->typeflag);
     printf("File linkname: %s\n", test_header->linkname);
+    printf("File magic: %s\n", test_header->magic);
+    printf("File version: %.2s\n", test_header->version);
+    printf("File uname: %s\n", test_header->uname);
 
     free(test_header);
     return 0;
@@ -99,15 +111,15 @@ header *fill_header_info(char *file)
     }
     my_memset(file_header, 0, sizeof(header)); // Zero out the memory
 
-    //may need to return an int on these functions
-    //use -1 for failure and 
-    //maybe use something like this:
-//     enum ErrorCode {
-//     SUCCESS = 0,
-//     FILE_NOT_FOUND_ERROR,
-//     MEMORY_ALLOCATION_ERROR,
-//     // ... more error codes
-// };
+    // may need to return an int on these functions
+    // use -1 for failure and
+    // maybe use something like this:
+    //     enum ErrorCode {
+    //     SUCCESS = 0,
+    //     FILE_NOT_FOUND_ERROR,
+    //     MEMORY_ALLOCATION_ERROR,
+    //     // ... more error codes
+    // };
     fill_name(file, file_header);
     fill_mode(file, file_stats, file_header);
     fill_uid(file, file_stats, file_header);
@@ -116,7 +128,17 @@ header *fill_header_info(char *file)
     fill_mtime(file, file_stats, file_header);
     fill_typeflag(file, file_stats, file_header);
     fill_linkname(file, file_stats, file_header);
+    fill_uname(file, file_stats, file_header);
 
+    //     char magic[6];       /* 257 */
+    my_strncpy(file_header->magic, TMAGIC, TMAGLEN - 1);
+    // just in case issues with '\0'
+    file_header->magic[TMAGLEN - 1] = '\0';
+
+    //     char version[2];     /* 263 */
+    file_header->version[0] = '0';
+    file_header->version[1] = '0';
+//null terminator needed???? ^^^
     return file_header;
 }
 
@@ -271,21 +293,19 @@ void fill_typeflag(char *file, struct stat file_stats, header *file_header)
     }
 }
 
-
 //     char linkname[100];  /* 157 */
-
 
 void fill_linkname(char *file, struct stat file_stats, header *file_header)
 {
-        if (lstat(file, &file_stats) == -1)
+    if (lstat(file, &file_stats) == -1)
     {
         return;
     }
 
-    if(S_ISLNK(file_stats.st_mode))
+    if (S_ISLNK(file_stats.st_mode))
     {
-        ssize_t file_len = readlink(file, file_header->linkname, sizeof(file_header->linkname) -1);
-        if(file_len == -1)
+        ssize_t file_len = readlink(file, file_header->linkname, sizeof(file_header->linkname) - 1);
+        if (file_len == -1)
         {
             return;
         }
@@ -295,18 +315,31 @@ void fill_linkname(char *file, struct stat file_stats, header *file_header)
     {
         file_header->linkname[0] = '\0';
     }
-    printf("linkname: %s", file_header->linkname);
 }
 
-
-
-
-
-
-//     char magic[6];       /* 257 */
-//     char version[2];     /* 263 */
 //     char uname[TUNMLEN]; /* 265 */
+void fill_uname(char *file, struct stat file_stats, header *file_header)
+{
+    if (stat(file, &file_stats) == -1)
+    {
+        return;
+    }
+
+    struct passwd *pwd = getpwuid(file_stats.st_uid);
+    if (pwd)
+    {
+        my_strncpy(file_header->uname, pwd->pw_name, TUNMLEN - 1);
+    }
+    else
+    {
+        my_strncpy(file_header->uname, "unknown", TUNMLEN - 1);
+    }
+
+    file_header->uname[TUNMLEN - 1] = '\0';
+}
+
 //     char gname[TGNMLEN]; /* 297 */
+
 //     char devmajor[8];    /* 329 */
 //     char devminor[8];    /* 337 */
 //     char prefix[155];    /* 345 */
