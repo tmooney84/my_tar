@@ -1,11 +1,12 @@
 // #include "print_error.h"
 // #include "my_printf.h"
 #include <stdio.h>
-#include <sys/types.h>
 #include <stdlib.h>
-// #include <dirent.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
+// #include <dirent.h>
 #include <fcntl.h>
 #include <pwd.h>
 #include <grp.h>
@@ -60,14 +61,16 @@ void fill_typeflag(char *file, struct stat file_stats, header *file_header);
 void fill_linkname(char *file, struct stat file_stats, header *file_header);
 void fill_uname(char *file, struct stat file_stats, header *file_header);
 void fill_gname(char *file, struct stat file_stats, header *file_header);
+void fill_devmajor(char *file, struct stat file_stats, header *file_header);
+void fill_devminor(char *file, struct stat file_stats, header *file_header);
 
 void ld_to_string(long int number, char string[], int os_size);
 void int_to_oct_string(int number, char octal_string[], int os_size);
 
 int main()
 {
-    // header *test_header = fill_header_info("my_printf.c");
-    header *test_header = fill_header_info("link_to_myprint");
+    header *test_header = fill_header_info("my_printf.c");
+    // header *test_header = fill_header_info("link_to_myprint");
     if (!test_header)
     {
         printf("Error... try again");
@@ -91,6 +94,8 @@ int main()
     printf("File version: %.2s\n", test_header->version);
     printf("File uname: %s\n", test_header->uname);
     printf("File gname: %s\n", test_header->gname);
+    printf("File devmajor: %s\n", test_header->devmajor);
+    printf("File devminor: %s\n", test_header->devminor);
 
     free(test_header);
     return 0;
@@ -131,6 +136,8 @@ header *fill_header_info(char *file)
     fill_typeflag(file, file_stats, file_header);
     fill_linkname(file, file_stats, file_header);
     fill_uname(file, file_stats, file_header);
+    fill_devmajor(file, file_stats, file_header);
+    fill_devminor(file, file_stats, file_header);
 
     //     char magic[6];       /* 257 */
     my_strncpy(file_header->magic, TMAGIC, TMAGLEN - 1);
@@ -143,8 +150,7 @@ header *fill_header_info(char *file)
 
     fill_gname(file, file_stats, file_header);
 
-
-return file_header;
+    return file_header;
 }
 
 void int_to_oct_string(int number, char octal_string[], int os_size)
@@ -364,15 +370,39 @@ void fill_gname(char *file, struct stat file_stats, header *file_header)
     file_header->gname[TGNMLEN - 1] = '\0';
 }
 
-
 //     char devmajor[8];    /* 329 */
-
-
-
-
+void fill_devmajor(char *file, struct stat file_stats, header *file_header)
+{
+    if (stat(file, &file_stats) == -1)
+    {
+        return;
+    }
+    dev_t file_devmajor = major(file_stats.st_dev);
+    int_to_oct_string(file_devmajor, file_header->devmajor, 8);
+}
 
 
 //     char devminor[8];    /* 337 */
+void fill_devminor(char *file, struct stat file_stats, header *file_header)
+{
+    if (stat(file, &file_stats) == -1)
+    {
+        return;
+    }
+    dev_t file_devminor = minor(file_stats.st_dev);
+    int_to_oct_string(file_devminor, file_header->devminor, 8);
+}
+
 //     char prefix[155];    /* 345 */
 //                          /* 500 */
+void fill_prefix(char *file, struct stat file_stats, header *file_header)
+{
+    if (stat(file, &file_stats) == -1)
+    {
+        return;
+    }
+    
+}
+
+
 //     char padding[12];
