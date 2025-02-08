@@ -1,5 +1,5 @@
 // #include "print_error.h"
-// #include "my_printf.h"
+//#include "my_printf.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -10,10 +10,11 @@
 #include <fcntl.h>
 #include <pwd.h>
 #include <grp.h>
+#include <linux/limits.h>
 
 #include "utils.h"
 
-#define RECORDSIZE 512
+#define BLOCKSIZE 512
 #define NAMESIZE 100
 #define TUNMLEN 32
 #define TGNMLEN 32
@@ -48,7 +49,7 @@ typedef struct header
 
 typedef struct block
 {
-    char content[512];
+    char content[BLOCKSIZE];
 } block;
 
 header *fill_header_info(char *file);
@@ -64,24 +65,27 @@ void fill_uname(char *file, struct stat file_stats, header *file_header);
 void fill_gname(char *file, struct stat file_stats, header *file_header);
 void fill_devmajor(char *file, struct stat file_stats, header *file_header);
 void fill_devminor(char *file, struct stat file_stats, header *file_header);
+void fill_chksum(char *file, struct stat file_stats, header *file_header);
 
 void ld_to_string(long int number, char string[], int os_size);
 void int_to_oct_string(int number, char octal_string[], int os_size);
 
 int main()
 {
-    header *test_header = fill_header_info("my_printf.c");
-    // header *test_header = fill_header_info("link_to_myprint");
+    header *test_header;
+    my_memset(test_header, 0, sizeof(header)); // Zero out the memory
+
+    test_header = fill_header_info("my_printf.c");
+
+    // test_header = fill_header_info("link_to_myprint");
+    // test_header = fill_header_info("asfdsassdfdsafsdafasfssfdsfdasffsddfsdfsdfssdffdfdsdsafsfsdsadfsdfasdfasdfdfasdasfdfasdfasdfasadfsafdafsdadfsafddfasdfadasfasdfdfsadfsadsffadadfadffdasdfsfadsadfsdfafasdfdafasd.txt");
+
     if (!test_header)
     {
-        printf("Error... try again");
+//        my_printf("Error... try again");
         return 1;
     }
-    my_memset(test_header, 0, sizeof(header)); // Zero out the memory
-    
-    printf("pid_t: %zu\n", sizeof(pid_t));
-    printf("uid_t: %zu\n", sizeof(uid_t));
-    printf("gid_t: %zu\n", sizeof(gid_t));
+
 
     printf("File Name: %s\n", test_header->name);
     printf("File Mode: %s\n", test_header->mode);
@@ -89,7 +93,7 @@ int main()
     printf("File GID: %s\n", test_header->gid);
     printf("File Size: %s\n", test_header->size);
     printf("File mtime: %s\n", test_header->mtime);
-    printf("File chksum: ??? \n");
+    printf("File chksum: %s\n", test_header->chksum);
     printf("File typeflag: %c\n", test_header->typeflag);
     printf("File linkname: %s\n", test_header->linkname);
     printf("File magic: %s\n", test_header->magic);
@@ -141,6 +145,7 @@ header *fill_header_info(char *file)
     fill_uname(file, file_stats, file_header);
     fill_devmajor(file, file_stats, file_header);
     fill_devminor(file, file_stats, file_header);
+    fill_chksum(file, file_stats, file_header);
 
     //     char magic[6];       /* 257 */
     my_strncpy(file_header->magic, TMAGIC, TMAGLEN - 1);
@@ -163,7 +168,7 @@ void int_to_oct_string(int number, char octal_string[], int os_size)
         octal_string[i] = '0' + (number % 8);
         number /= 8;
     }
-    printf("octal_string: %s\n", octal_string);
+    //printf("octal_string: %s\n", octal_string);
 }
 
 void ld_to_string(long int number, char string[], int os_size)
@@ -173,38 +178,52 @@ void ld_to_string(long int number, char string[], int os_size)
         string[i] = '0' + (number % 10);
         number /= 10;
     }
-    printf("dec_string: %s\n", string);
+    //printf("dec_string: %s\n", string);
 }
 
 // char name[NAMESIZE]; /*   0 */
-//     char prefix[155];    /* 345 */
-//                          /* 500 */
+// char prefix[155];    /* 345 */
+/* 500 */
 void fill_name(char *file, header *file_header)
 {
-    int file_size = my_strlen(file);
+    char absolute_path[PATH_MAX];
+    if (realpath(file, absolute_path) == NULL)
+    {
+        return;
+    }
+    //printf("absolute path: %s", absolute_path);
+    int path_size = my_strlen(absolute_path);
+    int last_slash_point = -1;
 
-  //  if (file_size < NAMESIZE)
-   // {
-        my_strncpy(file_header->name, file, file_size);
-        file_header->name[file_size] = '\0';
-   //     my_memset(file_header->prefix, 0, 155);
-   // }
-    // else
-    // {
-    //     if(strlen(file) > )
+    // due to my_strncpy placing a '\0' at the end of the string so
+    // 99 characters can be the max
+    if (path_size < NAMESIZE)
+    {
+        my_strncpy(file_header->name, absolute_path, path_size);
+        file_header->name[path_size] = '\0';
+        // memset(file_header->prefix, 0, sizeof(file_header->prefix)); // Clear prefix
+        return;
+    }
+    if (path_size >= NAMESIZE)
+    {
+        for (int i = 0; i < path_size; i++)
+        {
+            if (absolute_path[i] == '/')
+            {
+                last_slash_point = i;
+            }
+        }
+    }
+    if (last_slash_point == -1 || last_slash_point >= PREFIXSIZE)
+    {
+        return;
+    }
+    my_strncpy(file_header->prefix, absolute_path, last_slash_point);
+    file_header->prefix[last_slash_point] = '\0';
 
-        // my_strncpy(file_header->name, file, NAMESIZE - 1);
-        // file_header->name[NAMESIZE - 1] = '\0'; 
-        
-        // int prefix_size = file_size - (NAMESIZE -1);
-        // if(prefix_size >= PREFIXSIZE)
-        // {
-        //     prefix_size = PREFIXSIZE -1;
-        // }
-
-        // my_strncpy(file_header->prefix, file + (NAMESIZE - 1), prefix_size);
-        // file_header->name[prefix_size] = '\0'; 
- //   }
+    // Copy the filename portion into name (up to 100 bytes)
+    my_strncpy(file_header->name, absolute_path + last_slash_point + 1, NAMESIZE - 1);
+    file_header->name[NAMESIZE - 1] = '\0';
 }
 
 //     char mode[8];        /* 100 */
@@ -253,7 +272,7 @@ void fill_gid(char *file, struct stat file_stats, header *file_header)
         return;
     }
     int gid_int = file_stats.st_gid;
-    printf("gid: %d\n", gid_int);
+    //printf("gid: %d\n", gid_int);
     char octal_string[8];
     my_memset(octal_string, 0, 8);
     octal_string[7] = '\0';
@@ -418,3 +437,22 @@ void fill_devminor(char *file, struct stat file_stats, header *file_header)
     int_to_oct_string(file_devminor, file_header->devminor, 8);
 }
 
+void fill_chksum(char *file, struct stat file_stats, header *file_header)
+{
+    //'0's to fill out checksum field
+    my_memset(file_header->chksum, ' ', 8);
+    //printf("initial checksum field: %s\n", file_header->chksum);
+    int chksum_total = 0;
+
+    // loop over the entire header adding to chksum_total
+    // casts to unsigned char (bytes) datatype for looping
+    unsigned char *header_bytes = (unsigned char *)file_header;
+    for (int i = 0; i < BLOCKSIZE; i++)
+    {
+        chksum_total += header_bytes[i];
+    }
+
+    //printf("checksum field total: %d\n", chksum_total);
+    int_to_oct_string(chksum_total, file_header->chksum, 8);
+    file_header->chksum[7] = '\0';
+}
