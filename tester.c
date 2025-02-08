@@ -183,15 +183,15 @@ void fill_name(char *file, header *file_header)
 {
     int file_size = my_strlen(file);
 
-    if (file_size < NAMESIZE)
-    {
+  //  if (file_size < NAMESIZE)
+   // {
         my_strncpy(file_header->name, file, file_size);
         file_header->name[file_size] = '\0';
-        my_memset(file_header->prefix, 0, 155);
-    }
-    else
-    {
-        if(strlen(file) > )
+   //     my_memset(file_header->prefix, 0, 155);
+   // }
+    // else
+    // {
+    //     if(strlen(file) > )
 
         // my_strncpy(file_header->name, file, NAMESIZE - 1);
         // file_header->name[NAMESIZE - 1] = '\0'; 
@@ -204,7 +204,7 @@ void fill_name(char *file, header *file_header)
 
         // my_strncpy(file_header->prefix, file + (NAMESIZE - 1), prefix_size);
         // file_header->name[prefix_size] = '\0'; 
-    }
+ //   }
 }
 
 //     char mode[8];        /* 100 */
