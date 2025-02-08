@@ -79,7 +79,7 @@ int main()
         return 1;
     }
     my_memset(test_header, 0, sizeof(header)); // Zero out the memory
-
+    
     printf("pid_t: %zu\n", sizeof(pid_t));
     printf("uid_t: %zu\n", sizeof(uid_t));
     printf("gid_t: %zu\n", sizeof(gid_t));
@@ -178,50 +178,56 @@ void ld_to_string(long int number, char string[], int os_size)
 }
 
 // char name[NAMESIZE]; /*   0 */
-// char prefix[155];    /* 345 */
-/* 500 */
+//     char prefix[155];    /* 345 */
+//                          /* 500 */
 void fill_name(char *file, header *file_header)
 {
     char absolute_path[PATH_MAX];
-    if (realpath(file, absolute_path) == NULL)
+    if(realpath(file, absolute_path) == NULL)
     {
-        return;
+       return; 
     }
-    printf("absolute path: %s", absolute_path);
-    int path_size = my_strlen(absolute_path);
-    int last_slash_point = -1;
 
-    // due to my_strncpy placing a '\0' at the end of the string so
-    // 99 characters can be the max
-    if (path_size < NAMESIZE)
+    int path_size = my_strlen(absolute_path);
+    int last_slash_point = 0;
+
+    if (absolute_path < NAMESIZE)
     {
-        my_strncpy(file_header->name, absolute_path, path_size);
+        my_strncpy(file_header->name, file, absolute_path);
         file_header->name[path_size] = '\0';
-         //memset(file_header->prefix, 0, sizeof(file_header->prefix)); // Clear prefix
-        return;
+        my_memset(file_header->prefix, 0, 155);
     }
-        if (path_size >= NAMESIZE)
+    else
+    {
+        if(path_size > NAMESIZE)
         {
-            for (int i = 0; i < path_size; i++)
+            for(int i = 0; i < path_size; i++)
             {
-                if (absolute_path[i] == '/')
+                if (file[i] == '/')
                 {
                     last_slash_point = i;
                 }
+                my_memset(file_header->prefix, 0, 155);
+                my_strncpy(file_header->prefix, file, i -1);
+               
+                my_memset(file_header->name, 0, NAMESIZE);
+                my_strncpy(file_header->name, file + i +1, path_size - i);
             }
         }
-        if(last_slash_point == -1 || last_slash_point >= PREFIXSIZE)
-        {
-            return;
-        }
-       my_strncpy(file_header->prefix, absolute_path, last_slash_point);
-    file_header->prefix[last_slash_point] = '\0';
 
-    // Copy the filename portion into name (up to 100 bytes)
-    my_strncpy(file_header->name, absolute_path + last_slash_point + 1, NAMESIZE - 1);
-    file_header->name[NAMESIZE - 1] = '\0'; 
-    
+        // my_strncpy(file_header->name, file, NAMESIZE - 1);
+        // file_header->name[NAMESIZE - 1] = '\0'; 
+        
+        // int prefix_size = file_size - (NAMESIZE -1);
+        // if(prefix_size >= PREFIXSIZE)
+        // {
+        //     prefix_size = PREFIXSIZE -1;
+        // }
+
+        // my_strncpy(file_header->prefix, file + (NAMESIZE - 1), prefix_size);
+        // file_header->name[prefix_size] = '\0'; 
     }
+}
 
 //     char mode[8];        /* 100 */
 void fill_mode(char *file, struct stat file_stats, header *file_header)
@@ -433,3 +439,4 @@ void fill_devminor(char *file, struct stat file_stats, header *file_header)
     dev_t file_devminor = minor(file_stats.st_dev);
     int_to_oct_string(file_devminor, file_header->devminor, 8);
 }
+
