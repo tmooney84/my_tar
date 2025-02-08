@@ -50,6 +50,7 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #define TUNMLEN 32
 #define TGNMLEN 32
 #define PREFIXSIZE 155
+#define BLOCKSIZE 512
 
 // better to use a union? padding needed?
 typedef struct header
@@ -76,7 +77,7 @@ typedef struct header
 
 typedef struct block
 {
-    char content[512];
+    char content[BLOCKSIZE];
 } block;
 
 #define TAR_PERMS 0664 // RW for owner, group & R for others
@@ -349,41 +350,48 @@ int create_file(char *file_name, int flags, int perms)
 
 header *fill_header_info(char *file)
 {
-    struct stat file_stats;
 
-    header *file_header = malloc(sizeof(header *));
-    if (!file_header)
-    {
-        return NULL;
-    }
+    header *file_header;
     my_memset(file_header, 0, sizeof(header)); // Zero out the memory
 
-    int file_size = (my_strlen(file) < NAMESIZE - 1) ? my_strlen(file) : NAMESIZE - 1;
+    file_header = fill_header_info(file);
 
-    my_strncpy(file_header->name, file, file_size); // char name[NAMESIZE]; /*   0 */
 
-               if(stat(file, &file_stats) == -1) 
-               {
-                return NULL;
-               }                                    //     char mode[8];        /* 100 */
-
-    //     char uid[8];         /* 108 */
-    //     char gid[8];         /* 116 */
-    //     char size[12];       /* 124 */
-    //     char mtime[12];      /* 136 */
-    //     char chksum[8];      /* 148 */
-    //     char typeflag;       /* 156 */
-    //     char linkname[100];  /* 157 */
-    //     char magic[6];       /* 257 */
-    //     char version[2];     /* 263 */
-    //     char uname[TUNMLEN]; /* 265 */
-    //     char gname[TGNMLEN]; /* 297 */
-    //     char devmajor[8];    /* 329 */
-    //     char devminor[8];    /* 337 */
-    //     char prefix[155];    /* 345 */
-    //                          /* 500 */
-    //     char padding[12];
     return file_header;
+    // struct stat file_stats;
+
+    // header *file_header = malloc(sizeof(header *));
+    // if (!file_header)
+    // {
+    //     return NULL;
+    // }
+    // my_memset(file_header, 0, sizeof(header)); // Zero out the memory
+
+    // int file_size = (my_strlen(file) < NAMESIZE - 1) ? my_strlen(file) : NAMESIZE - 1;
+
+    // my_strncpy(file_header->name, file, file_size); // char name[NAMESIZE]; /*   0 */
+
+    //            if(stat(file, &file_stats) == -1) 
+    //            {
+    //             return NULL;
+    //            }                                    //     char mode[8];        /* 100 */
+
+    // //     char uid[8];         /* 108 */
+    // //     char gid[8];         /* 116 */
+    // //     char size[12];       /* 124 */
+    // //     char mtime[12];      /* 136 */
+    // //     char chksum[8];      /* 148 */
+    // //     char typeflag;       /* 156 */
+    // //     char linkname[100];  /* 157 */
+    // //     char magic[6];       /* 257 */
+    // //     char version[2];     /* 263 */
+    // //     char uname[TUNMLEN]; /* 265 */
+    // //     char gname[TGNMLEN]; /* 297 */
+    // //     char devmajor[8];    /* 329 */
+    // //     char devminor[8];    /* 337 */
+    // //     char prefix[155];    /* 345 */
+    // //                          /* 500 */
+    // //     char padding[12];
 }
 int append_file(int tar_fd, char *append_file)
 {
