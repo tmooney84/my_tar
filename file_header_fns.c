@@ -273,12 +273,12 @@ void fill_size(char *file, struct stat file_stats, header *file_header)
     {
         return;
     }
-    long int gid_ld = (long int)file_stats.st_size;
+    long int f_size = (long int)file_stats.st_size;
     char string[12];
     my_memset(string, 0, 12);
     string[11] = '\0';
 
-    ld_to_string(gid_ld, string, 12);
+    ld_to_string(f_size, string, 12);
     my_strncpy(file_header->size, string, 12);
 }
 
