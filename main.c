@@ -44,6 +44,7 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #include "utils.h"
 #include "my_printf.h"
 #include "print_error.h"
+#include "file_header_fns.h"
 
 #define RECORDSIZE 512
 #define NAMESIZE 100
@@ -53,32 +54,6 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #define BLOCKSIZE 512
 
 // better to use a union? padding needed?
-typedef struct header
-{                        /* byte offset */
-    char name[NAMESIZE]; /*   0 null-term string*/
-    char mode[8];        /* 100 */
-    char uid[8];         /* 108 */
-    char gid[8];         /* 116 */
-    char size[12];       /* 124 */
-    char mtime[12];      /* 136 */
-    char chksum[8];      /* 148 */
-    char typeflag;       /* 156 */
-    char linkname[100];  /* 157 */
-    char magic[6];       /* 257 null-term string*/ 
-    char version[2];     /* 263 */
-    char uname[TUNMLEN]; /* 265 null-term string*/
-    char gname[TGNMLEN]; /* 297 null-term string*/
-    char devmajor[8];    /* 329 */
-    char devminor[8];    /* 337 */
-    char prefix[155];    /* 345 */
-                         /* 500 */
-    char padding[12];    // POTENTIAL PADDING
-} header;
-
-typedef struct block
-{
-    char content[BLOCKSIZE];
-} block;
 
 #define TAR_PERMS 0664 // RW for owner, group & R for others
 
@@ -192,13 +167,17 @@ int main(int argc, char **argv)
         flag_error();
         return -1;
     }
-    //*********************need to count the number of dashes and redo this section!!! tar -c -f  versus  tar -cf name.tar file_name
+    //*********************need to count the number of dashes and redo this section!!! tar -c -f  versus  tar -cf name.tar file_name 
     else if (my_strcmp(argv[1], "-cf") == 0)
     {
         if (create_tar(names, num_names, v_flag) == -1)
         {
             return -1;
         }
+        
+        //TEST file_header_fns.c IN main:
+        //tester_main(argv[2]);
+        return 0; 
     }
     // else if(my_strcmp(argv[1], "-cvf")==0)
     //     {
@@ -336,123 +315,90 @@ char **create_names_array(int argc, char **argv, int num_names)
     print_string_array(names, names_index);
     return names;
 }
+//346-416 commented for testing
 
-int create_file(char *file_name, int flags, int perms)
-{
-    int fd;
-    if (fd = open(file_name, O_RDWR, perms) == -1)
-    {
-        tarball_error(file_name);
-        return -1;
-    }
-    return fd;
-}
+// int create_file(char *file_name, int flags, int perms)
+// {
+//     int fd;
+//     if (fd = open(file_name, O_RDWR, perms) == -1)
+//     {
+//         tarball_error(file_name);
+//         return -1;
+//     }
+//     return fd;
+// }
 
-header *fill_header_info(char *file)
-{
+// int append_file(int tar_fd, char *append_file)
+// {
+//     header *file_header = fill_header_info(append_file);
+//     if (!file_header)
+//     {
+//         failed_alloc(); // ???
+//         return -1;
+//     }
+//     // after writing file_header info to file FREE file_header !!!
+//     // includes  fill_header(names[i]);>>> MAKE SURE TO START APPENDING WRITE WHEN ZERO PADDING STARTS AND MAKE
 
-    header *file_header;
-    my_memset(file_header, 0, sizeof(header)); // Zero out the memory
+//     free(file_header);
+//     return 0; // if successful may need conditional logic
+// }
 
-    file_header = fill_header_info(file);
+// int create_tar(char **names, int num_names, int v_flag)
+// {
+//     char *tar_name = names[0];
+//     int tar_fd;
+
+//     // create tar file:
+//     if (tar_fd = create_file(tar_name, O_RDWR, TAR_PERMS) < 0)
+//     {
+//         tarball_error(tar_name);
+//         return -1;
+//     }
+
+//     unsigned int needed_space = 0;
+
+//     for (int i = 1; i < num_names; i++)
+//     {
+//         struct stat arg_stats;
+//         if (stat(names[i], &arg_stats) < 0)
+//         {
+//             file_error(names[i]);
+//         }
+
+//         else if (S_ISDIR(arg_stats.st_mode))
+//         {
+//             // fill_header_info
+//             // recursively go through folder and append to file
+//             // append_directory() ???
+//         }
+//         else
+//         {
+//             // if file to append
+//             if (append_file(tar_fd, names[i]) != 0)
+//             {
+//                 file_error(names[i]);
+//                 return -1;
+//             }
+
+//             // if(v_flag) >>> to print the file that was added
+//             // {
+//             //     my_printf("%s\n", names[i]);
+//             // }
+//         }
+//     }
+//     return tar_fd;
+// }
 
 
-    return file_header;
-    // struct stat file_stats;
 
-    // header *file_header = malloc(sizeof(header *));
-    // if (!file_header)
-    // {
-    //     return NULL;
-    // }
-    // my_memset(file_header, 0, sizeof(header)); // Zero out the memory
 
-    // int file_size = (my_strlen(file) < NAMESIZE - 1) ? my_strlen(file) : NAMESIZE - 1;
 
-    // my_strncpy(file_header->name, file, file_size); // char name[NAMESIZE]; /*   0 */
 
-    //            if(stat(file, &file_stats) == -1) 
-    //            {
-    //             return NULL;
-    //            }                                    //     char mode[8];        /* 100 */
 
-    // //     char uid[8];         /* 108 */
-    // //     char gid[8];         /* 116 */
-    // //     char size[12];       /* 124 */
-    // //     char mtime[12];      /* 136 */
-    // //     char chksum[8];      /* 148 */
-    // //     char typeflag;       /* 156 */
-    // //     char linkname[100];  /* 157 */
-    // //     char magic[6];       /* 257 */
-    // //     char version[2];     /* 263 */
-    // //     char uname[TUNMLEN]; /* 265 */
-    // //     char gname[TGNMLEN]; /* 297 */
-    // //     char devmajor[8];    /* 329 */
-    // //     char devminor[8];    /* 337 */
-    // //     char prefix[155];    /* 345 */
-    // //                          /* 500 */
-    // //     char padding[12];
-}
-int append_file(int tar_fd, char *append_file)
-{
-    header *file_header = fill_header_info(append_file);
-    if (!file_header)
-    {
-        failed_alloc(); // ???
-        return -1;
-    }
-    // after writing file_header info to file FREE file_header !!!
-    // includes  fill_header(names[i]);>>> MAKE SURE TO START APPENDING WRITE WHEN ZERO PADDING STARTS AND MAKE
 
-    free(file_header);
-    return 0; // if successful may need conditional logic
-}
 
-int create_tar(char **names, int num_names, int v_flag)
-{
-    char *tar_name = names[0];
-    int tar_fd;
 
-    // create tar file:
-    if (tar_fd = create_file(tar_name, O_RDWR, TAR_PERMS) < 0)
-    {
-        tarball_error(tar_name);
-        return -1;
-    }
 
-    unsigned int needed_space = 0;
-
-    for (int i = 1; i < num_names; i++)
-    {
-        struct stat arg_stats;
-        if (stat(names[i], &arg_stats) < 0)
-        {
-            file_error(names[i]);
-        }
-
-        else if (S_ISDIR(arg_stats.st_mode))
-        {
-            // fill_header_info
-            // recursively go through folder and append to file
-            // append_directory() ???
-        }
-        else
-        {
-            // if file to append
-            if (append_file(tar_fd, names[i]) != 0)
-            {
-                file_error(names[i]);
-                return -1;
-            }
-
-            // if(v_flag) >>> to print the file that was added
-            // {
-            //     my_printf("%s\n", names[i]);
-            // }
-        }
-    }
-    return tar_fd;
-}
 //        //check if is file vs dir
 //        file_header_info(names[i]);
 

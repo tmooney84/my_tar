@@ -8,13 +8,13 @@ CFLAGS = -Wall -Wextra -Werror -std=c99
 TARGET = my_tar
 
 # Source files (add all your .c files here)
-SRC = main.c utils.c print_error.c my_printf.c #my_ls.c utils.c string_quicksort.c time_quicksort.c
+SRC = main.c utils.c print_error.c my_printf.c file_header_fns.c #my_ls.c utils.c string_quicksort.c time_quicksort.c
 
 # Object files (derived automatically from SRC)
 OBJ = $(SRC:.c=.o)
 
 # Header files (optional but useful for dependency management)
-HEADERS = utils.h print_error.h my_printf.h #utils.h string_quicksort.h time_quicksort.h
+HEADERS = utils.h print_error.h my_printf.h file_header_fns.h  #utils.h string_quicksort.h time_quicksort.h
 
 # Build target
 all: $(TARGET)

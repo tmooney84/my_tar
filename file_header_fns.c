@@ -1,5 +1,13 @@
+// -Yes, you can avoid putting the #define _XOPEN_SOURCE 700 directive in your source code by instead passing it as a compiler flag (using -D) in your Makefile.
+// -Alternatively, you can use -D_POSIX_C_SOURCE=200809L to achieve a similar effect.
+// -Using GNU extensions (e.g., -std=gnu99) might also work, but that changes your compilation mode.
+
+
+#define _XOPEN_SOURCE 700 
+
 // #include "print_error.h"
 //#include "my_printf.h"
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -13,6 +21,7 @@
 #include <linux/limits.h>
 
 #include "utils.h"
+#include "file_header_fns.h"
 
 #define BLOCKSIZE 512
 #define NAMESIZE 100
@@ -25,57 +34,33 @@
 #define TVERSION "00" /* 00 and no null */
 #define TVERSLEN 2
 
-typedef struct header
-{                        /* byte offset */
-    char name[NAMESIZE]; /*   0 */
-    char mode[8];        /* 100 */
-    char uid[8];         /* 108 */
-    char gid[8];         /* 116 */
-    char size[12];       /* 124 */
-    char mtime[12];      /* 136 */
-    char chksum[8];      /* 148 */
-    char typeflag;       /* 156 */
-    char linkname[100];  /* 157 */
-    char magic[6];       /* 257 */
-    char version[2];     /* 263 */
-    char uname[TUNMLEN]; /* 265 */
-    char gname[TGNMLEN]; /* 297 */
-    char devmajor[8];    /* 329 */
-    char devminor[8];    /* 337 */
-    char prefix[155];    /* 345 */
-                         /* 500 */
-    char padding[12];    // POTENTIAL PADDING
-} header;
+// header *fill_header_info(char *file);
+// void fill_name(char *file, header *file_header);
+// void fill_mode(char *file, struct stat file_stats, header *file_header);
+// void fill_uid(char *file, struct stat file_stats, header *file_header);
+// void fill_gid(char *file, struct stat file_stats, header *file_header);
+// void fill_size(char *file, struct stat file_stats, header *file_header);
+// void fill_mtime(char *file, struct stat file_stats, header *file_header);
+// void fill_typeflag(char *file, struct stat file_stats, header *file_header);
+// void fill_linkname(char *file, struct stat file_stats, header *file_header);
+// void fill_uname(char *file, struct stat file_stats, header *file_header);
+// void fill_gname(char *file, struct stat file_stats, header *file_header);
+// void fill_devmajor(char *file, struct stat file_stats, header *file_header);
+// void fill_devminor(char *file, struct stat file_stats, header *file_header);
+// void fill_chksum(header *file_header);
 
-typedef struct block
-{
-    char content[BLOCKSIZE];
-} block;
+// void ld_to_string(long int number, char string[], int os_size);
+// void int_to_oct_string(int number, char octal_string[], int os_size);
 
-header *fill_header_info(char *file);
-void fill_name(char *file, header *file_header);
-void fill_mode(char *file, struct stat file_stats, header *file_header);
-void fill_uid(char *file, struct stat file_stats, header *file_header);
-void fill_gid(char *file, struct stat file_stats, header *file_header);
-void fill_size(char *file, struct stat file_stats, header *file_header);
-void fill_mtime(char *file, struct stat file_stats, header *file_header);
-void fill_typeflag(char *file, struct stat file_stats, header *file_header);
-void fill_linkname(char *file, struct stat file_stats, header *file_header);
-void fill_uname(char *file, struct stat file_stats, header *file_header);
-void fill_gname(char *file, struct stat file_stats, header *file_header);
-void fill_devmajor(char *file, struct stat file_stats, header *file_header);
-void fill_devminor(char *file, struct stat file_stats, header *file_header);
-void fill_chksum(char *file, struct stat file_stats, header *file_header);
 
-void ld_to_string(long int number, char string[], int os_size);
-void int_to_oct_string(int number, char octal_string[], int os_size);
 
-int main()
+
+int tester_main(char file_name [])
 {
     header *file_header;
-    my_memset(file_header, 0, sizeof(header)); // Zero out the memory
 
-    file_header = fill_header_info("my_printf.c");
+    // file_header = fill_header_info("my_printf.c");
+       file_header = fill_header_info(file_name);
 
     // file_header = fill_header_info("link_to_myprint");
     // file_header = fill_header_info("asfdsassdfdsafsdafasfssfdsfdasffsddfsdfsdfssdffdfdsdsafsfsdsadfsdfasdfasdfdfasdasfdfasdfasdfasadfsafdafsdadfsafddfasdfadasfasdfdfsadfsadsffadadfadffdasdfsfadsadfsdfafasdfdafasd.txt");
@@ -145,7 +130,7 @@ header *fill_header_info(char *file)
     fill_uname(file, file_stats, file_header);
     fill_devmajor(file, file_stats, file_header);
     fill_devminor(file, file_stats, file_header);
-    fill_chksum(file, file_stats, file_header);
+    fill_chksum(file_header);
 
     //     char magic[6];       /* 257 */
     my_strncpy(file_header->magic, TMAGIC, TMAGLEN - 1);
@@ -437,7 +422,7 @@ void fill_devminor(char *file, struct stat file_stats, header *file_header)
     int_to_oct_string(file_devminor, file_header->devminor, 8);
 }
 
-void fill_chksum(char *file, struct stat file_stats, header *file_header)
+void fill_chksum(header *file_header)
 {
     //'0's to fill out checksum field
     my_memset(file_header->chksum, ' ', 8);
