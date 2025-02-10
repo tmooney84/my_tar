@@ -72,39 +72,39 @@ void int_to_oct_string(int number, char octal_string[], int os_size);
 
 int main()
 {
-    header *test_header;
-    my_memset(test_header, 0, sizeof(header)); // Zero out the memory
+    header *file_header;
+    my_memset(file_header, 0, sizeof(header)); // Zero out the memory
 
-    test_header = fill_header_info("my_printf.c");
+    file_header = fill_header_info("my_printf.c");
 
-    // test_header = fill_header_info("link_to_myprint");
-    // test_header = fill_header_info("asfdsassdfdsafsdafasfssfdsfdasffsddfsdfsdfssdffdfdsdsafsfsdsadfsdfasdfasdfdfasdasfdfasdfasdfasadfsafdafsdadfsafddfasdfadasfasdfdfsadfsadsffadadfadffdasdfsfadsadfsdfafasdfdafasd.txt");
+    // file_header = fill_header_info("link_to_myprint");
+    // file_header = fill_header_info("asfdsassdfdsafsdafasfssfdsfdasffsddfsdfsdfssdffdfdsdsafsfsdsadfsdfasdfasdfdfasdasfdfasdfasdfasadfsafdafsdadfsafddfasdfadasfasdfdfsadfsadsffadadfadffdasdfsfadsadfsdfafasdfdafasd.txt");
 
-    if (!test_header)
+    if (!file_header)
     {
 //        my_printf("Error... try again");
         return 1;
     }
 
 
-    printf("File Name: %s\n", test_header->name);
-    printf("File Mode: %s\n", test_header->mode);
-    printf("File UID: %s\n", test_header->uid);
-    printf("File GID: %s\n", test_header->gid);
-    printf("File Size: %s\n", test_header->size);
-    printf("File mtime: %s\n", test_header->mtime);
-    printf("File chksum: %s\n", test_header->chksum);
-    printf("File typeflag: %c\n", test_header->typeflag);
-    printf("File linkname: %s\n", test_header->linkname);
-    printf("File magic: %s\n", test_header->magic);
-    printf("File version: %.2s\n", test_header->version);
-    printf("File uname: %s\n", test_header->uname);
-    printf("File gname: %s\n", test_header->gname);
-    printf("File devmajor: %s\n", test_header->devmajor);
-    printf("File devminor: %s\n", test_header->devminor);
-    printf("File prefix: %s\n", test_header->prefix);
+    printf("File Name: %s\n", file_header->name);
+    printf("File Mode: %s\n", file_header->mode);
+    printf("File UID: %s\n", file_header->uid);
+    printf("File GID: %s\n", file_header->gid);
+    printf("File Size: %s\n", file_header->size);
+    printf("File mtime: %s\n", file_header->mtime);
+    printf("File chksum: %s\n", file_header->chksum);
+    printf("File typeflag: %c\n", file_header->typeflag);
+    printf("File linkname: %s\n", file_header->linkname);
+    printf("File magic: %s\n", file_header->magic);
+    printf("File version: %.2s\n", file_header->version);
+    printf("File uname: %s\n", file_header->uname);
+    printf("File gname: %s\n", file_header->gname);
+    printf("File devmajor: %s\n", file_header->devmajor);
+    printf("File devminor: %s\n", file_header->devminor);
+    printf("File prefix: %s\n", file_header->prefix);
 
-    free(test_header);
+    free(file_header);
     return 0;
 }
 
