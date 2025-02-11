@@ -46,7 +46,7 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #include "print_error.h"
 #include "file_header_fns.h"
 
-#define RECORDSIZE 512
+#define RECORDSIZE 20
 #define NAMESIZE 100
 #define TUNMLEN 32
 #define TGNMLEN 32
@@ -115,7 +115,8 @@ char **create_names_array(int argc, char **argv, int num_names);
 
 int create_file(char *file_name, int flags, int perms);
 int create_tar(char **names, int num_names, int v_flag);
-int append_file(int tar_fd, char *append_file);
+int create_tar_file(char **names);
+int append_file_data(int tar_fd, char *append_file);
 int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
 int extract_tar(int argc, char **argv, int v_flag);
@@ -257,6 +258,11 @@ void failed_alloc()
     print_error("Failed to allocate memory.\n");
 }
 
+void append_error()
+{
+    print_error("Failure to append file.\n");
+}
+
 void tarball_error(char *tar_name)
 {
     my_printf("my_tar: Cannot open %s\n", tar_name);
@@ -329,25 +335,33 @@ int create_file(char *file_name, int flags, int perms)
     return fd;
 }
 
-int create_tar(char **names, int num_names, int v_flag)
+int create_tar_file(char **names)
 {
     char *tar_name = names[0];
     int tar_fd;
 
     // create tar file:
-    if (tar_fd = create_file(tar_name, O_RDWR, TAR_PERMS) < 0)
+    if (tar_fd = create_file(tar_name, O_WRONLY | O_CREAT | O_TRUNC, TAR_PERMS) < 0)
     {
         tarball_error(tar_name);
         return -1;
     }
+    return tar_fd;
+}
 
-    unsigned int needed_space = 0;
+
+int create_tar(char **names, int num_names, int v_flag)
+{    
+    int tar_fd = create_tar_file(names);
+
 
     for (int i = 1; i < num_names; i++)
     {
         process_entry(names[i], tar_fd);
     }
-    return tar_fd;
+
+    add_zeros(tar_fd);
+    
 }
 
 void process_entry(const char *path, int tar_fd)
@@ -371,7 +385,7 @@ void process_entry(const char *path, int tar_fd)
     if (S_ISREG(arg_stats.st_mode))
     {
         // if file to append
-        if (append_file(tar_fd, path) != 0)
+        if (append_file_data(tar_fd, path) != 0)
         {
             file_error(path);
             return -1;
@@ -414,27 +428,77 @@ void process_entry(const char *path, int tar_fd)
     // }
 }
 
-int append_file(int tar_fd, char *append_file)
+int append_file_data(int tar_fd, char *append_file)
 {
     struct stat file_stats;
 
-    // what to do about symbolic links lsat and in tar???
+    // what to do about symbolic links lsat and in tar??
     if (stat(append_file, &file_stats) == -1)
     {
-        return;
+        return -1;
     }
 
     long int f_size = (long int)file_stats.st_size;
+    
+    struct stat tar_stats;
+
+    // what to do about symbolic links lsat and in tar??
+    if (fstat(tar_fd, &tar_stats) == -1)
+    {
+        return -1;
+    }
+
+    long int tar_size = (long int)tar_stats.st_size;
+
 
     int num_blocks;
+    int num_records;
 
-    num_blocks = (f_size % 512 == 0) ? f_size / 512 : f_size / 512 + 1;
+  //  num_blocks = (f_size % BLOCKSIZE == 0) ? f_size / BLOCKSIZE : f_size / BLOCKSIZE + 1;
+    int num_blocks = 0;
 
-    unsigned char buff[512];
+   // num_records = (num_blocks % RECORDSIZE == 0) ? num_blocks / RECORDSIZE : num_blocks / RECORDSIZE + 1;
+
+
+    unsigned char buff[BLOCKSIZE];
     ssize_t bytes_read;
 
     int append_fd = open(append_file, O_RDONLY);
+    int num_zeros = 0;
+
+    //if the tar is larger than size of header then just append...
+    if(tar_size == BLOCKSIZE)
+    {
+
+    }
+
+    //this will seek to see if zeros
+    if(tar_size > BLOCKSIZE && lseek(tar_fd, 1024, SEEK_END) == -1 && check_zeros)
+    {
+        append_error();
+    }
+
 //maybe better to use while? instead of for... may be more vulnerable
+while((bytes_read = read(append_fd, buff, BLOCKSIZE)) > 0)
+{
+    if(bytes_read == BLOCKSIZE)
+    {
+        write(tar_fd, buff, 512); // write into file
+        num_blocks++;
+    }
+    
+        else if(bytes_read < BLOCKSIZE)
+    {
+       num_zeros = BLOCKSIZE - bytes_read;
+       for(int i = 0; i < num_zeros; i++)
+       {
+        
+       }
+       num_blocks++;
+    }
+    }
+
+
     for (int i = 0; i < num_blocks; i++)
     {
         // need to account for end of file being less than 512
@@ -443,7 +507,6 @@ int append_file(int tar_fd, char *append_file)
 
 
         //*** need to worry about seek!!! to stay at correct point */
-        write(tar_fd, buff, 512); // write into file
 
         if (bytes_read < 512)
         {

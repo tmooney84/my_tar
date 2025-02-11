@@ -1,0 +1,8 @@
+To-Do Tuesday
+
+- start in append_file and clean up Line 472 by adding
+a check_zeros function that returns 0 true and -1
+if not
+
+-if those are good then start the write at that 1024 
+from the end
