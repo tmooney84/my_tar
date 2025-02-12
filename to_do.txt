@@ -1,4 +1,4 @@
-To-Do Tuesday
+To-Do Wednesday
 
 - start in append_file and clean up Line 472 by adding
 a check_zeros function that returns 0 true and -1

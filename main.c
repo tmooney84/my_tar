@@ -114,8 +114,8 @@ header *fill_header_info(char *file);
 char **create_names_array(int argc, char **argv, int num_names);
 
 int create_file(char *file_name, int flags, int perms);
-int create_tar(char **names, int num_names, int v_flag);
-int create_tar_file(char **names);
+int create_tar(char **names, int num_names); //int v_flag
+int create_tar_file(char *tar_name);
 int append_file_data(int tar_fd, char *append_file);
 int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
@@ -158,7 +158,8 @@ int main(int argc, char **argv)
     int num_flag_args = 1; // for now is 1 to make it work
 
     int num_names = argc - num_flag_args + 1;
-    char **names = create_names_array(argc, argv, num_names);
+    char **first_name = argv;
+    char **names = create_names_array(argc, first_name, num_names);
     if (!names)
     {
         failed_alloc();
@@ -173,10 +174,13 @@ int main(int argc, char **argv)
     //*********************need to count the number of dashes and redo this section!!! tar -c -f  versus  tar -cf name.tar file_name
     else if (my_strcmp(argv[1], "-cf") == 0)
     {
-        if (create_tar(names, num_names, v_flag) == -1)
-        {
-            return -1;
-        }
+        //int fd = create_file("zzz.txt", O_CREAT | O_RDWR, 0664);
+        int fd = create_tar(names, num_names);
+        printf("fd is: %d", fd);
+        // if (create_tar(names, num_names) == -1) //int v_flag
+        // {
+        //     return -1;
+        // }
 
         // TEST file_header_fns.c IN main:
         // tester_main(argv[2]);
@@ -328,7 +332,8 @@ char **create_names_array(int argc, char **argv, int num_names)
 int create_file(char *file_name, int flags, int perms)
 {
     int fd;
-    if (fd = open(file_name, O_RDWR, perms) == -1)
+    fd = open(file_name, flags, perms); //O_RDWR
+    if(fd < 0) 
     {
         tarball_error(file_name);
         return -1;
@@ -336,13 +341,15 @@ int create_file(char *file_name, int flags, int perms)
     return fd;
 }
 
-int create_tar_file(char **names)
+int create_tar_file(char *tar_name)
 {
-    char *tar_name = names[0];
     int tar_fd;
 
     // create tar file:
-    if (tar_fd = create_file(tar_name, O_WRONLY | O_CREAT | O_TRUNC, TAR_PERMS) < 0)
+    //tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);//TAR_PERMS
+    tar_fd = create_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
+    printf("tar_fd: %d", tar_fd);
+    if(tar_fd < 0) 
     {
         tarball_error(tar_name);
         return -1;
@@ -351,212 +358,247 @@ int create_tar_file(char **names)
 }
 
 
-int create_tar(char **names, int num_names, int v_flag)
-{    
-    int tar_fd = create_tar_file(names);
+int create_tar(char **names, int num_names) //int v_flag
+{   
+    int tar_fd;
+     
+    char *tar_name = names[0];
+    printf("tar_name: %s\n", tar_name);
+    tar_fd = create_tar_file(tar_name);
 
+    
+    if(tar_fd < 0)
+    {
+        return -1;
+    }
+
+    return tar_fd;
 
     for (int i = 1; i < num_names; i++)
     {
-        process_entry(names[i], tar_fd);
+        printf("test\n");
+    //    process_entry(names[i], tar_fd);
     }
 
-    add_zeros(tar_fd);
-    
+    //add_zeros(tar_fd);
+   return 0; 
 }
 
-void process_entry(const char *path, int tar_fd)
-{
-    struct stat arg_stats;
-    if (stat(path, &arg_stats) < 0)
-    {
-        file_error(path);
-    }
+// void process_entry(const char *path, int tar_fd)
+// {
+//     struct stat arg_stats;
+//     if (stat(path, &arg_stats) < 0)
+//     {
+//         file_error(path);
+//     }
 
-    header *hdr = fill_header_info(path);
-    if (!hdr)
-    {
-        file_error(path);
-        return;
-    }
-    write_header(hdr, tar_fd);
+//     header *hdr = fill_header_info(path);
+//     if (!hdr)
+//     {
+//         file_error(path);
+//         return;
+//     }
+//     write_header(hdr, tar_fd);
 
-    free(hdr);
+//     free(hdr);
 
-    if (S_ISREG(arg_stats.st_mode))
-    {
-        // if file to append
-        if (append_file_data(tar_fd, path) != 0)
-        {
-            file_error(path);
-            return -1;
-        }
-    }
+//     if (S_ISREG(arg_stats.st_mode))
+//     {
+//         // if file to append
+//         if (append_file_data(tar_fd, path) != 0)
+//         {
+//             file_error(path);
+//             return -1;
+//         }
+//     }
 
-    else if (S_ISDIR(arg_stats.st_mode))
-    {
-        DIR *dir = opendir(path);
-        if (!dir)
-        {
-            file_error(path);
-            free(hdr);
-            return;
-        }
+//     else if (S_ISDIR(arg_stats.st_mode))
+//     {
+//         DIR *dir = opendir(path);
+//         if (!dir)
+//         {
+//             file_error(path);
+//             free(hdr);
+//             return;
+//         }
 
-        struct dirent *entry;
+//         struct dirent *entry;
 
-        while ((entry = readdir(dir)) != NULL)
-        {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-            {
-                continue;
-            }
-            int len = my_strlen(entry->d_name);
+//         while ((entry = readdir(dir)) != NULL)
+//         {
+//             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+//             {
+//                 continue;
+//             }
+//             int len = my_strlen(entry->d_name);
 
-            char new_path[PATH_MAX];
-            my_strncpy(new_path, entry->d_name, len);
+//             char new_path[PATH_MAX];
+//             my_strncpy(new_path, entry->d_name, len);
 
-            process_entry(new_path, tar_fd);
-        }
-        // fill_header_info
-        // recursively go through folder and append to file
-        // append_directory() ???
-    }
+//             process_entry(new_path, tar_fd);
+//         }
+//         // fill_header_info
+//         // recursively go through folder and append to file
+//         // append_directory() ???
+//     }
 
-    // if(v_flag) >>> to print the file that was added
-    // {
-    //     my_printf("%s\n", names[i]);
-    // }
-}
+//     // if(v_flag) >>> to print the file that was added
+//     // {
+//     //     my_printf("%s\n", names[i]);
+//     // }
+// }
 
-int append_file_data(int tar_fd, char *append_file)
-{
-    struct stat file_stats;
+// int append_file_data(int tar_fd, char *append_file)
+// {
+//     struct stat file_stats;
 
-    // what to do about symbolic links lsat and in tar??
-    if (stat(append_file, &file_stats) == -1)
-    {
-        return -1;
-    }
+//     // what to do about symbolic links lsat and in tar??
+//     if (stat(append_file, &file_stats) == -1)
+//     {
+//         return -1;
+//     }
 
-    long int f_size = (long int)file_stats.st_size;
+//     long int f_size = (long int)file_stats.st_size;
     
-    struct stat tar_stats;
+//     struct stat tar_stats;
 
-    // what to do about symbolic links lsat and in tar??
-    if (fstat(tar_fd, &tar_stats) == -1)
-    {
-        return -1;
-    }
+//     // what to do about symbolic links lsat and in tar??
+//     if (fstat(tar_fd, &tar_stats) == -1)
+//     {
+//         return -1;
+//     }
 
-    long int tar_size = (long int)tar_stats.st_size;
-
-
-    int num_blocks;
-    int num_records;
-
-  //  num_blocks = (f_size % BLOCKSIZE == 0) ? f_size / BLOCKSIZE : f_size / BLOCKSIZE + 1;
-    int num_blocks = 0;
-
-   // num_records = (num_blocks % RECORDSIZE == 0) ? num_blocks / RECORDSIZE : num_blocks / RECORDSIZE + 1;
+//     long int tar_size = (long int)tar_stats.st_size;
 
 
-    unsigned char buff[BLOCKSIZE];
-    ssize_t bytes_read;
+//     int num_blocks;
+//     int num_records;
 
-    int append_fd = open(append_file, O_RDONLY);
-    int num_zeros = 0;
+//   //  num_blocks = (f_size % BLOCKSIZE == 0) ? f_size / BLOCKSIZE : f_size / BLOCKSIZE + 1;
+//     int num_blocks = 0;
 
-    //if the tar is larger than size of header then just append...
-    if(tar_size == BLOCKSIZE)
-    {
+//    // num_records = (num_blocks % RECORDSIZE == 0) ? num_blocks / RECORDSIZE : num_blocks / RECORDSIZE + 1;
 
-    }
 
-    //this will seek to see if zeros
-    if(tar_size > BLOCKSIZE && lseek(tar_fd, 1024, SEEK_END) == -1 && check_zeros)
-    {
-        append_error();
-    }
+//     unsigned char buff[BLOCKSIZE];
+//     ssize_t bytes_read;
 
-//maybe better to use while? instead of for... may be more vulnerable
-while((bytes_read = read(append_fd, buff, BLOCKSIZE)) > 0)
-{
-    if(bytes_read == BLOCKSIZE)
-    {
-        write(tar_fd, buff, 512); // write into file
-        num_blocks++;
-    }
+//     int append_fd = open(append_file, O_RDONLY);
+//     int num_zeros = 0;
+
+//     //if the tar is larger than size of header then just append...
+//     if(tar_size == BLOCKSIZE)
+//     {
+
+//     }
+
+//     //this will seek to see if zeros
+//     if(tar_size > BLOCKSIZE && lseek(tar_fd, 1024, SEEK_END) == -1 && check_zeros)
+//     {
+//         append_error();
+//     }
+
+// //maybe better to use while? instead of for... may be more vulnerable
+// while((bytes_read = read(append_fd, buff, BLOCKSIZE)) > 0)
+// {
+//     if(bytes_read == BLOCKSIZE)
+//     {
+//         write(tar_fd, buff, 512); // write into file
+//         num_blocks++;
+//     }
     
-        else if(bytes_read < BLOCKSIZE)
-    {
-       num_zeros = BLOCKSIZE - bytes_read;
-       for(int i = 0; i < num_zeros; i++)
-       {
+//         else if(bytes_read < BLOCKSIZE)
+//     {
+//        num_zeros = BLOCKSIZE - bytes_read;
+//        for(int i = 0; i < num_zeros; i++)
+//        {
         
-       }
-       num_blocks++;
-    }
-    }
+//        }
+//        num_blocks++;
+//     }
+//     }
 
 
-    for (int i = 0; i < num_blocks; i++)
-    {
-        // need to account for end of file being less than 512
-        // add 0 for rest
-        bytes_read = read(append_fd, buff, 512); // read into buffer
+//     for (int i = 0; i < num_blocks; i++)
+//     {
+//         // need to account for end of file being less than 512
+//         // add 0 for rest
+//         bytes_read = read(append_fd, buff, 512); // read into buffer
 
 
-        //*** need to worry about seek!!! to stay at correct point */
+//         //*** need to worry about seek!!! to stay at correct point */
 
-        if (bytes_read < 512)
-        {
-            unsigned char end_bytes[512 - bytes_read];
+//         if (bytes_read < 512)
+//         {
+//             unsigned char end_bytes[512 - bytes_read];
 
-            for (int j = 0; j < 512 - bytes_read; j++)
-            {
-                end_bytes[j] = (unsigned char)0;
-            }
+//             for (int j = 0; j < 512 - bytes_read; j++)
+//             {
+//                 end_bytes[j] = (unsigned char)0;
+//             }
 
-        }
-    }
+//         }
+//     }
 
-    // after writing file_header info to file FREE file_header !!!
-    // includes  fill_header(names[i]);>>> MAKE SURE TO START APPENDING WRITE WHEN ZERO PADDING STARTS AND MAKE
+//     // after writing file_header info to file FREE file_header !!!
+//     // includes  fill_header(names[i]);>>> MAKE SURE TO START APPENDING WRITE WHEN ZERO PADDING STARTS AND MAKE
 
-    return 0; // if successful may need conditional logic
-}
+//     return 0; // if successful may need conditional logic
+// }
 
-int write_header(header *hdr, int tar_fd) //!!!look to chatgpt example
-{
-int bytes_read;
-while((bytes_read = read(append_fd, buff, BLOCKSIZE)) > 0)
-{
-    if(bytes_read == BLOCKSIZE)
-    {
-        write(tar_fd, buff, 512); // write into file
-        num_blocks++;
-    }
-    
-        else if(bytes_read < BLOCKSIZE)
-    {
-       num_zeros = BLOCKSIZE - bytes_read;
-       for(int i = 0; i < num_zeros; i++)
-       {
-        
-       }
-       num_blocks++;
-    }
-    }
+// int write_header(header *hdr, int tar_fd) //!!!look to chatgpt example
+// {
+
+// int bytes_written = 0;
+// unsigned char *hdr_data = (unsigned char*)hdr;
+// int hdr_size = my_strlen((char*)hdr_data);
+// if(hdr_size != BLOCKSIZE)
+// {
+//     my_printf("Header size error");
+//     return -1;
+// }
+
+// while(bytes_written < BLOCKSIZE)
+// {
+//    write(tar_fd,hdr_data + bytes_written, BLOCKSIZE); 
+//     }
 
 
 
 
-return -1;
+// return -1;
 
 
-return 0;
-}
+// return 0;
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //        //check if is file vs dir
 //        file_header_info(names[i]);
