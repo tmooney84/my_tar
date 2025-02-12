@@ -120,6 +120,7 @@ int append_file_data(int tar_fd, char *append_file);
 int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
 int extract_tar(int argc, char **argv, int v_flag);
+int write_header(header *hdr, int tar_fd);
 
 // for things like this will need a pointer to the beginning
 // of the header and then can use pointer arithmetic to get
@@ -517,7 +518,6 @@ while((bytes_read = read(append_fd, buff, BLOCKSIZE)) > 0)
                 end_bytes[j] = (unsigned char)0;
             }
 
-            write(tar_fd, end_bytes, 512 - bytes_read);
         }
     }
 
@@ -527,8 +527,35 @@ while((bytes_read = read(append_fd, buff, BLOCKSIZE)) > 0)
     return 0; // if successful may need conditional logic
 }
 
-void write_header(hdr, tar_fd)
+int write_header(header *hdr, int tar_fd) //!!!look to chatgpt example
 {
+int bytes_read;
+while((bytes_read = read(append_fd, buff, BLOCKSIZE)) > 0)
+{
+    if(bytes_read == BLOCKSIZE)
+    {
+        write(tar_fd, buff, 512); // write into file
+        num_blocks++;
+    }
+    
+        else if(bytes_read < BLOCKSIZE)
+    {
+       num_zeros = BLOCKSIZE - bytes_read;
+       for(int i = 0; i < num_zeros; i++)
+       {
+        
+       }
+       num_blocks++;
+    }
+    }
+
+
+
+
+return -1;
+
+
+return 0;
 }
 
 //        //check if is file vs dir
