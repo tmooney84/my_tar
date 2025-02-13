@@ -345,8 +345,8 @@ int create_tar_file(char *tar_name)
     int tar_fd;
 
     // create tar file:
-    //tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);//TAR_PERMS
-    tar_fd = create_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
+    tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
+    //tar_fd = create_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
     printf("tar_fd: %d", tar_fd);
     if(tar_fd < 0) 
     {
@@ -376,76 +376,76 @@ int create_tar(char **names, int num_names) //int v_flag
     for (int i = 1; i < num_names; i++)
     {
         printf("test\n");
-    //    process_entry(names[i], tar_fd);
+        process_entry(names[i], tar_fd);
     }
 
     //add_zeros(tar_fd);
    return 0; 
 }
 
-// void process_entry(const char *path, int tar_fd)
-// {
-//     struct stat arg_stats;
-//     if (stat(path, &arg_stats) < 0)
-//     {
-//         file_error(path);
-//     }
+void process_entry(const char *path, int tar_fd)
+{
+    struct stat arg_stats;
+    if (stat(path, &arg_stats) < 0)
+    {
+        file_error(path);
+    }
 
-//     header *hdr = fill_header_info(path);
-//     if (!hdr)
-//     {
-//         file_error(path);
-//         return;
-//     }
-//     write_header(hdr, tar_fd);
+    header *hdr = fill_header_info(path);
+    if (!hdr)
+    {
+        file_error(path);
+        return;
+    }
+    write_header(hdr, tar_fd);
 
-//     free(hdr);
+    free(hdr);
 
-//     if (S_ISREG(arg_stats.st_mode))
-//     {
-//         // if file to append
-//         if (append_file_data(tar_fd, path) != 0)
-//         {
-//             file_error(path);
-//             return -1;
-//         }
-//     }
+    if (S_ISREG(arg_stats.st_mode))
+    {
+        // if file to append
+        if (append_file_data(tar_fd, path) != 0)
+        {
+            file_error(path);
+            return -1;
+        }
+    }
 
-//     else if (S_ISDIR(arg_stats.st_mode))
-//     {
-//         DIR *dir = opendir(path);
-//         if (!dir)
-//         {
-//             file_error(path);
-//             free(hdr);
-//             return;
-//         }
+    else if (S_ISDIR(arg_stats.st_mode))
+    {
+        DIR *dir = opendir(path);
+        if (!dir)
+        {
+            file_error(path);
+            free(hdr);
+            return;
+        }
 
-//         struct dirent *entry;
+        struct dirent *entry;
 
-//         while ((entry = readdir(dir)) != NULL)
-//         {
-//             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-//             {
-//                 continue;
-//             }
-//             int len = my_strlen(entry->d_name);
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            {
+                continue;
+            }
+            int len = my_strlen(entry->d_name);
 
-//             char new_path[PATH_MAX];
-//             my_strncpy(new_path, entry->d_name, len);
+            char new_path[PATH_MAX];
+            my_strncpy(new_path, entry->d_name, len);
 
-//             process_entry(new_path, tar_fd);
-//         }
-//         // fill_header_info
-//         // recursively go through folder and append to file
-//         // append_directory() ???
-//     }
+            process_entry(new_path, tar_fd);
+        }
+        // fill_header_info
+        // recursively go through folder and append to file
+        // append_directory() ???
+    }
 
-//     // if(v_flag) >>> to print the file that was added
-//     // {
-//     //     my_printf("%s\n", names[i]);
-//     // }
-// }
+    // if(v_flag) >>> to print the file that was added
+    // {
+    //     my_printf("%s\n", names[i]);
+    // }
+}
 
 // int append_file_data(int tar_fd, char *append_file)
 // {
