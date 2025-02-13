@@ -114,13 +114,14 @@ header *fill_header_info(char *file);
 char **create_names_array(int argc, char **argv, int num_names);
 
 int create_file(char *file_name, int flags, int perms);
-int create_tar(char **names, int num_names); //int v_flag
+int create_tar(char **names, int num_names); // int v_flag
 int create_tar_file(char *tar_name);
 int append_file_data(int tar_fd, char *append_file);
 int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
 int extract_tar(int argc, char **argv, int v_flag);
 int write_header(header *hdr, int tar_fd);
+int process_entry(char *path, int tar_fd);
 
 // for things like this will need a pointer to the beginning
 // of the header and then can use pointer arithmetic to get
@@ -174,7 +175,7 @@ int main(int argc, char **argv)
     //*********************need to count the number of dashes and redo this section!!! tar -c -f  versus  tar -cf name.tar file_name
     else if (my_strcmp(argv[1], "-cf") == 0)
     {
-        //int fd = create_file("zzz.txt", O_CREAT | O_RDWR, 0664);
+        // int fd = create_file("zzz.txt", O_CREAT | O_RDWR, 0664);
         int fd = create_tar(names, num_names);
         printf("fd is: %d", fd);
         // if (create_tar(names, num_names) == -1) //int v_flag
@@ -331,8 +332,8 @@ char **create_names_array(int argc, char **argv, int num_names)
 int create_file(char *file_name, int flags, int perms)
 {
     int fd;
-    fd = open(file_name, flags, perms); //O_RDWR
-    if(fd < 0) 
+    fd = open(file_name, flags, perms); // O_RDWR
+    if (fd < 0)
     {
         tarball_error(file_name);
         return -1;
@@ -346,9 +347,9 @@ int create_tar_file(char *tar_name)
 
     // create tar file:
     tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
-    //tar_fd = create_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
+    // tar_fd = create_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
     printf("tar_fd: %d", tar_fd);
-    if(tar_fd < 0) 
+    if (tar_fd < 0)
     {
         tarball_error(tar_name);
         return -1;
@@ -356,42 +357,44 @@ int create_tar_file(char *tar_name)
     return tar_fd;
 }
 
-
-int create_tar(char **names, int num_names) //int v_flag
-{   
+int create_tar(char **names, int num_names) // int v_flag
+{
     int tar_fd;
-     
+
     char *tar_name = names[0];
     printf("tar_name: %s\n", tar_name);
     tar_fd = create_tar_file(tar_name);
 
-    
-    if(tar_fd < 0)
+    if (tar_fd < 0)
     {
         return -1;
     }
 
-    return tar_fd;
-
     for (int i = 1; i < num_names; i++)
     {
         printf("test\n");
-        process_entry(names[i], tar_fd);
+        if(process_entry(names[i], tar_fd) < 0)
+        {
+            my_printf("Error processing %s into tar file", names[i]);
+            return 1;
+        }
     }
 
-    //add_zeros(tar_fd);
-   return 0; 
+    // add_zeros(tar_fd);
+    return 0;
 }
 
-void process_entry(const char *path, int tar_fd)
+int process_entry(char *path, int tar_fd)
 {
     struct stat arg_stats;
     if (stat(path, &arg_stats) < 0)
     {
         file_error(path);
     }
-
+    tester_main(path);
     header *hdr = fill_header_info(path);
+
+    printf("tar_fd: %d\n", tar_fd);
     if (!hdr)
     {
         file_error(path);
@@ -400,6 +403,7 @@ void process_entry(const char *path, int tar_fd)
     write_header(hdr, tar_fd);
 
     free(hdr);
+    //close(tar_fd); >>> save for the end of function
 
     if (S_ISREG(arg_stats.st_mode))
     {
@@ -411,41 +415,44 @@ void process_entry(const char *path, int tar_fd)
         }
     }
 
-    else if (S_ISDIR(arg_stats.st_mode))
-    {
-        DIR *dir = opendir(path);
-        if (!dir)
-        {
-            file_error(path);
-            free(hdr);
-            return;
-        }
+    // else if (S_ISDIR(arg_stats.st_mode))
+    // {
+    //     DIR *dir = opendir(path);
+    //     if (!dir)
+    //     {
+    //         file_error(path);
+    //         free(hdr);
+    //         return;
+    //     }
 
-        struct dirent *entry;
+    //     struct dirent *entry;
 
-        while ((entry = readdir(dir)) != NULL)
-        {
-            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-            {
-                continue;
-            }
-            int len = my_strlen(entry->d_name);
+    //     while ((entry = readdir(dir)) != NULL)
+    //     {
+    //         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+    //         {
+    //             continue;
+    //         }
+    //         int len = my_strlen(entry->d_name);
 
-            char new_path[PATH_MAX];
-            my_strncpy(new_path, entry->d_name, len);
+    //         char new_path[PATH_MAX];
+    //         my_strncpy(new_path, entry->d_name, len);
 
-            process_entry(new_path, tar_fd);
-        }
-        // fill_header_info
-        // recursively go through folder and append to file
-        // append_directory() ???
-    }
+    //         process_entry(new_path, tar_fd);
+    //     }
+    // fill_header_info
+    // recursively go through folder and append to file
+    // append_directory() ???
+    //}
 
     // if(v_flag) >>> to print the file that was added
     // {
     //     my_printf("%s\n", names[i]);
     // }
+return 0;
 }
+
+
 
 // int append_file_data(int tar_fd, char *append_file)
 // {
@@ -458,7 +465,7 @@ void process_entry(const char *path, int tar_fd)
 //     }
 
 //     long int f_size = (long int)file_stats.st_size;
-    
+
 //     struct stat tar_stats;
 
 //     // what to do about symbolic links lsat and in tar??
@@ -469,7 +476,6 @@ void process_entry(const char *path, int tar_fd)
 
 //     long int tar_size = (long int)tar_stats.st_size;
 
-
 //     int num_blocks;
 //     int num_records;
 
@@ -477,7 +483,6 @@ void process_entry(const char *path, int tar_fd)
 //     int num_blocks = 0;
 
 //    // num_records = (num_blocks % RECORDSIZE == 0) ? num_blocks / RECORDSIZE : num_blocks / RECORDSIZE + 1;
-
 
 //     unsigned char buff[BLOCKSIZE];
 //     ssize_t bytes_read;
@@ -505,25 +510,23 @@ void process_entry(const char *path, int tar_fd)
 //         write(tar_fd, buff, 512); // write into file
 //         num_blocks++;
 //     }
-    
+
 //         else if(bytes_read < BLOCKSIZE)
 //     {
 //        num_zeros = BLOCKSIZE - bytes_read;
 //        for(int i = 0; i < num_zeros; i++)
 //        {
-        
+
 //        }
 //        num_blocks++;
 //     }
 //     }
-
 
 //     for (int i = 0; i < num_blocks; i++)
 //     {
 //         // need to account for end of file being less than 512
 //         // add 0 for rest
 //         bytes_read = read(append_fd, buff, 512); // read into buffer
-
 
 //         //*** need to worry about seek!!! to stay at correct point */
 
@@ -545,36 +548,25 @@ void process_entry(const char *path, int tar_fd)
 //     return 0; // if successful may need conditional logic
 // }
 
-// int write_header(header *hdr, int tar_fd) //!!!look to chatgpt example
-// {
+int write_header(header *hdr, int tar_fd) //!!!look to chatgpt example
+{
+    unsigned char *hdr_data = (unsigned char *)hdr;
+    size_t bytes_written = 0;
 
-// int bytes_written = 0;
-// unsigned char *hdr_data = (unsigned char*)hdr;
-// int hdr_size = my_strlen((char*)hdr_data);
-// if(hdr_size != BLOCKSIZE)
-// {
-//     my_printf("Header size error");
-//     return -1;
-// }
-
-// while(bytes_written < BLOCKSIZE)
-// {
-//    write(tar_fd,hdr_data + bytes_written, BLOCKSIZE); 
-//     }
-
-
-
-
-// return -1;
-
-
-// return 0;
-// }
-
-
-
-
-
+while(bytes_written < BLOCKSIZE)
+{
+    //ssize_t >>> [-1, SIZE_MAX] bytes, if issue returns -1
+    ssize_t written = write(tar_fd, hdr_data + bytes_written, BLOCKSIZE);
+    if(written < 0)
+    {
+        my_printf("write_header: write failed");
+        return -1;
+    }
+    bytes_written += written;
+}
+    printf("bytes_written: %ld", bytes_written);
+    return 0;
+}
 
 
 

@@ -89,6 +89,12 @@ int tester_main(char file_name [])
     printf("File devminor: %s\n", file_header->devminor);
     printf("File prefix: %s\n", file_header->prefix);
 
+    unsigned char *th = (unsigned char *)file_header;
+    for(int i = 0; i < 512; i++)
+    {
+        printf("%c", th[i]);
+    }
+
     free(file_header);
     return 0;
 }
