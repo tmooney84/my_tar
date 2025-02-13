@@ -157,7 +157,7 @@ int main(int argc, char **argv)
     int j_flag = 0;
     int num_flag_args = 1; // for now is 1 to make it work
 
-    int num_names = argc - num_flag_args + 1;
+    int num_names = argc - (num_flag_args + 1);
     char **first_name = argv;
     char **names = create_names_array(argc, first_name, num_names);
     if (!names)
@@ -306,7 +306,6 @@ char **create_names_array(int argc, char **argv, int num_names)
         return NULL;
     }
     my_memset(names, 0, (num_names) * (sizeof(char *)));
-
     int names_index = 0;
 
     for (int i = argc - num_names; i < argc; i++)
