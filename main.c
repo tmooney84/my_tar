@@ -120,8 +120,9 @@ int append_file_data(int tar_fd, char *append_file);
 int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
 int extract_tar(int argc, char **argv, int v_flag);
-int write_header(header *hdr, int tar_fd);
 int process_entry(char *path, int tar_fd);
+int write_header(header *hdr, int tar_fd);
+int write_file_data(int tar_fd,int f_fd, int f_size);
 
 // for things like this will need a pointer to the beginning
 // of the header and then can use pointer arithmetic to get
@@ -398,7 +399,7 @@ int process_entry(char *path, int tar_fd)
     if (!hdr)
     {
         file_error(path);
-        return;
+        return -1;
     }
     write_header(hdr, tar_fd);
 
@@ -454,47 +455,56 @@ return 0;
 
 
 
-// int append_file_data(int tar_fd, char *append_file)
-// {
-//     struct stat file_stats;
+int append_file_data(int tar_fd, char *append_file)
+{
+    //get file size 
+    struct stat file_stats;
 
-//     // what to do about symbolic links lsat and in tar??
-//     if (stat(append_file, &file_stats) == -1)
-//     {
-//         return -1;
-//     }
+    // what to do about symbolic links lsat and in tar??
+    if (stat(append_file, &file_stats) == -1)
+    {
+        return -1;
+    }
 
-//     long int f_size = (long int)file_stats.st_size;
+    long int f_size = (long int)file_stats.st_size;
 
-//     struct stat tar_stats;
+    //get tar size
+    struct stat tar_stats;
 
-//     // what to do about symbolic links lsat and in tar??
-//     if (fstat(tar_fd, &tar_stats) == -1)
-//     {
-//         return -1;
-//     }
+    if (fstat(tar_fd, &tar_stats) == -1)
+    {
+        return -1;
+    }
 
-//     long int tar_size = (long int)tar_stats.st_size;
+    long int tar_size = (long int)tar_stats.st_size;
 
-//     int num_blocks;
-//     int num_records;
+    //int num_blocks;
+    //int num_records;
 
-//   //  num_blocks = (f_size % BLOCKSIZE == 0) ? f_size / BLOCKSIZE : f_size / BLOCKSIZE + 1;
-//     int num_blocks = 0;
+  //  num_blocks = (f_size % BLOCKSIZE == 0) ? f_size / BLOCKSIZE : f_size / BLOCKSIZE + 1;
+   // int num_blocks = 0;
 
-//    // num_records = (num_blocks % RECORDSIZE == 0) ? num_blocks / RECORDSIZE : num_blocks / RECORDSIZE + 1;
+   // num_records = (num_blocks % RECORDSIZE == 0) ? num_blocks / RECORDSIZE : num_blocks / RECORDSIZE + 1;
 
-//     unsigned char buff[BLOCKSIZE];
-//     ssize_t bytes_read;
+   // unsigned char buff[BLOCKSIZE];
+    //ssize_t bytes_read;
 
-//     int append_fd = open(append_file, O_RDONLY);
-//     int num_zeros = 0;
+    int append_fd = open(append_file, O_RDONLY);
+    //int num_zeros = 0;
 
-//     //if the tar is larger than size of header then just append...
-//     if(tar_size == BLOCKSIZE)
-//     {
+    //if the tar is larger than size of header then just append...
+    if(tar_size == BLOCKSIZE)
+    {
+        int ts_n;
 
-//     }
+        ts_n = write_file_data(tar_fd, append_fd, f_size);
+
+        if(ts_n < 0)
+        {
+            print_error("Unable to append file data\n");
+            return -1;
+        }
+   }
 
 //     //this will seek to see if zeros
 //     if(tar_size > BLOCKSIZE && lseek(tar_fd, 1024, SEEK_END) == -1 && check_zeros)
@@ -541,14 +551,15 @@ return 0;
 
 //         }
 //     }
+//      ***close tar_fd and append_fd
 
 //     // after writing file_header info to file FREE file_header !!!
 //     // includes  fill_header(names[i]);>>> MAKE SURE TO START APPENDING WRITE WHEN ZERO PADDING STARTS AND MAKE
 
-//     return 0; // if successful may need conditional logic
-// }
+         return 0; // if successful may need conditional logic
+ }
 
-int write_header(header *hdr, int tar_fd) //!!!look to chatgpt example
+int write_header(header *hdr, int tar_fd)
 {
     unsigned char *hdr_data = (unsigned char *)hdr;
     size_t bytes_written = 0;
@@ -559,7 +570,7 @@ while(bytes_written < BLOCKSIZE)
     ssize_t written = write(tar_fd, hdr_data + bytes_written, BLOCKSIZE);
     if(written < 0)
     {
-        my_printf("write_header: write failed");
+        print_error("write_header: write failed");
         return -1;
     }
     bytes_written += written;
@@ -568,7 +579,46 @@ while(bytes_written < BLOCKSIZE)
     return 0;
 }
 
+int write_file_data(int tar_fd,int f_fd, int f_size)
+{
+        unsigned char transfer_buff[BLOCKSIZE];
+        ssize_t total_bytes_written = 0;
+        ssize_t n = 0;
+        while((n = read(f_fd, transfer_buff, BLOCKSIZE)) > 0)
+        {
+            if(write(tar_fd,transfer_buff + total_bytes_written, f_size) != n)
+            {
+                print_error("Failure to write file data");
+                return -1;
+            }
+        if(n < 0)
+        {
+            print_error("read error");
+            return -1;
+        }
+        total_bytes_written += n;
+        }
+        
+    
+    printf("bytes_written: %ld\n", total_bytes_written);
 
+    unsigned char test_buff[total_bytes_written];
+    ssize_t test_num;
+
+    test_num = read(f_fd + BLOCKSIZE, test_buff, total_bytes_written) < 0;
+    
+    if(test_num < 0)
+    {
+        print_error("error printing file contents");
+    } 
+
+    for(int i = 0; i < BLOCKSIZE + total_bytes_written; i++)
+    {
+        printf("%c", test_buff[i]);
+    }
+    printf("\n...tar contents finished being read");
+    return 0;
+}
 
 
 
