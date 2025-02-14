@@ -123,6 +123,7 @@ int extract_tar(int argc, char **argv, int v_flag);
 int process_entry(char *path, int tar_fd);
 int write_header(header *hdr, int tar_fd);
 int write_file_data(int tar_fd,int f_fd, int f_size);
+int write_padding(int tar_fd,int total_required_padding);
 
 // for things like this will need a pointer to the beginning
 // of the header and then can use pointer arithmetic to get
@@ -178,7 +179,7 @@ int main(int argc, char **argv)
     {
         // int fd = create_file("zzz.txt", O_CREAT | O_RDWR, 0664);
         int fd = create_tar(names, num_names);
-        printf("fd successful if 0: %d", fd);
+        printf("fd successful if 0: %d\n", fd);
         // if (create_tar(names, num_names) == -1) //int v_flag
         // {
         //     return -1;
@@ -376,7 +377,7 @@ int create_tar(char **names, int num_names) // int v_flag
         printf("test\n");
         if(process_entry(names[i], tar_fd) < 0)
         {
-            my_printf("Error processing %s into tar file", names[i]);
+            my_printf("Error processing %s into tar file\n", names[i]);
             return 1;
         }
     }
@@ -442,6 +443,11 @@ int process_entry(char *path, int tar_fd)
     //         my_strncpy(new_path, entry->d_name, len);
 
     //         process_entry(new_path, tar_fd);
+
+
+    //close(dir); >>> need to figure out how to free these pointers as they go
+    //through recursion
+
     //     }
     // fill_header_info
     // recursively go through folder and append to file
@@ -454,13 +460,61 @@ int process_entry(char *path, int tar_fd)
     // }
 
 
-
     // NEED TO CALCULATE PADDING FOR BLOCKS (512 bytes) AND FOR RECORD SIZE (20 BLOCKS)
     // Beware of the padding overflowing into another record and having to fill the entire
     //record
+struct stat tar_stats;
+
+    if (fstat(tar_fd, &tar_stats) == -1)
+    {
+        return -1;
+    }
+
+    long int tar_size = (long int)tar_stats.st_size;
+    printf("tar_size before padding: %ld\n", tar_size);
+
+//need two zero blocks and then need to see if that goes over the size of a record
+int zero_padding = 2 * BLOCKSIZE;
+
+int total_required_padding = (RECORDSIZE * BLOCKSIZE) - (tar_size + zero_padding) % (RECORDSIZE * BLOCKSIZE) + zero_padding;
+
+    printf("padding needed: %d\n", total_required_padding);
+
+if(write_padding(tar_fd, total_required_padding) < 0)
+{
+    print_error("Unable to add padding\n");
+    return -1;
+}
+    
+    tar_size = (long int)tar_stats.st_size;
+    printf("tar_size after padding added: %ld\n", tar_size);
+
+
 return 0;
 }
 
+int write_padding(int tar_fd,int total_required_padding)
+{
+    char zero_buff[total_required_padding];
+    my_memset(zero_buff, 0, total_required_padding);
+
+ssize_t bytes_written = 0;
+
+    int end_data = lseek(tar_fd, 0, SEEK_END);
+    printf("End data: %d\n", end_data);
+
+while(bytes_written < total_required_padding){
+    ssize_t written = write(tar_fd, zero_buff + bytes_written, total_required_padding - bytes_written);
+    if (written < 0)
+    {
+        print_error("Failure to write data.\n");
+        return -1;
+    }
+    bytes_written += written;
+}
+
+return 0;
+}
 
 
 int append_file_data(int tar_fd, char *append_file)
@@ -477,6 +531,7 @@ int append_file_data(int tar_fd, char *append_file)
 
     long int f_size = (long int)file_stats.st_size;
     printf("f_size in append: %ld\n", f_size);
+
     //get tar size
     struct stat tar_stats;
 
