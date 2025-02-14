@@ -383,6 +383,36 @@ int create_tar(char **names, int num_names) // int v_flag
     }
 
     // add_zeros(tar_fd);
+
+struct stat tar_stats;
+
+    if (fstat(tar_fd, &tar_stats) == -1)
+    {
+        return -1;
+    }
+
+    long int tar_size = (long int)tar_stats.st_size;
+    printf("tar_size before padding: %ld\n", tar_size);
+
+//need two zero blocks and then need to see if that goes over the size of a record
+int zero_padding = 2 * BLOCKSIZE;
+
+int total_required_padding = (RECORDSIZE * BLOCKSIZE) - (tar_size + zero_padding) % (RECORDSIZE * BLOCKSIZE) + zero_padding;
+
+    printf("padding needed: %d\n", total_required_padding);
+
+if(write_padding(tar_fd, total_required_padding) < 0)
+{
+    print_error("Unable to add padding\n");
+    return -1;
+}
+    
+    tar_size = (long int)tar_stats.st_size;
+    printf("tar_size after padding added: %ld\n", tar_size);
+
+
+
+
     close(tar_fd);
 
     return 0;
@@ -463,31 +493,6 @@ int process_entry(char *path, int tar_fd)
     // NEED TO CALCULATE PADDING FOR BLOCKS (512 bytes) AND FOR RECORD SIZE (20 BLOCKS)
     // Beware of the padding overflowing into another record and having to fill the entire
     //record
-struct stat tar_stats;
-
-    if (fstat(tar_fd, &tar_stats) == -1)
-    {
-        return -1;
-    }
-
-    long int tar_size = (long int)tar_stats.st_size;
-    printf("tar_size before padding: %ld\n", tar_size);
-
-//need two zero blocks and then need to see if that goes over the size of a record
-int zero_padding = 2 * BLOCKSIZE;
-
-int total_required_padding = (RECORDSIZE * BLOCKSIZE) - (tar_size + zero_padding) % (RECORDSIZE * BLOCKSIZE) + zero_padding;
-
-    printf("padding needed: %d\n", total_required_padding);
-
-if(write_padding(tar_fd, total_required_padding) < 0)
-{
-    print_error("Unable to add padding\n");
-    return -1;
-}
-    
-    tar_size = (long int)tar_stats.st_size;
-    printf("tar_size after padding added: %ld\n", tar_size);
 
 
 return 0;
@@ -511,8 +516,9 @@ while(bytes_written < total_required_padding){
         return -1;
     }
     bytes_written += written;
+    //printf("writing data\n");
 }
-
+    //printf("bytes_written: %zu\n", bytes_written);
 return 0;
 }
 
