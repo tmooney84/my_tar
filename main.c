@@ -178,7 +178,7 @@ int main(int argc, char **argv)
     {
         // int fd = create_file("zzz.txt", O_CREAT | O_RDWR, 0664);
         int fd = create_tar(names, num_names);
-        printf("fd is: %d", fd);
+        printf("fd successful if 0: %d", fd);
         // if (create_tar(names, num_names) == -1) //int v_flag
         // {
         //     return -1;
@@ -349,7 +349,7 @@ int create_tar_file(char *tar_name)
     // create tar file:
     tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
     // tar_fd = create_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
-    printf("tar_fd: %d", tar_fd);
+    printf("tar_fd: %d\n", tar_fd);
     if (tar_fd < 0)
     {
         tarball_error(tar_name);
@@ -382,6 +382,8 @@ int create_tar(char **names, int num_names) // int v_flag
     }
 
     // add_zeros(tar_fd);
+    close(tar_fd);
+
     return 0;
 }
 
@@ -450,6 +452,12 @@ int process_entry(char *path, int tar_fd)
     // {
     //     my_printf("%s\n", names[i]);
     // }
+
+
+
+    // NEED TO CALCULATE PADDING FOR BLOCKS (512 bytes) AND FOR RECORD SIZE (20 BLOCKS)
+    // Beware of the padding overflowing into another record and having to fill the entire
+    //record
 return 0;
 }
 
@@ -457,6 +465,7 @@ return 0;
 
 int append_file_data(int tar_fd, char *append_file)
 {
+        printf("append_file_data named %s started!!!!!!\n", append_file);
     //get file size 
     struct stat file_stats;
 
@@ -467,7 +476,7 @@ int append_file_data(int tar_fd, char *append_file)
     }
 
     long int f_size = (long int)file_stats.st_size;
-
+    printf("f_size in append: %ld\n", f_size);
     //get tar size
     struct stat tar_stats;
 
@@ -477,6 +486,7 @@ int append_file_data(int tar_fd, char *append_file)
     }
 
     long int tar_size = (long int)tar_stats.st_size;
+    printf("tar_size in append: %ld\n", tar_size);
 
     //int num_blocks;
     //int num_records;
@@ -492,8 +502,13 @@ int append_file_data(int tar_fd, char *append_file)
     int append_fd = open(append_file, O_RDONLY);
     //int num_zeros = 0;
 
-    //if the tar is larger than size of header then just append...
-    if(tar_size == BLOCKSIZE)
+    if(tar_size < BLOCKSIZE)
+    {
+        print_error("Failure to write file header");
+        return -1;
+    }
+    //if the tar is larger than size of header then just append because
+    else
     {
         int ts_n;
 
@@ -555,7 +570,8 @@ int append_file_data(int tar_fd, char *append_file)
 
 //     // after writing file_header info to file FREE file_header !!!
 //     // includes  fill_header(names[i]);>>> MAKE SURE TO START APPENDING WRITE WHEN ZERO PADDING STARTS AND MAKE
-
+        close(append_fd);
+       printf("closed append_fd\n"); 
          return 0; // if successful may need conditional logic
  }
 
@@ -575,48 +591,74 @@ while(bytes_written < BLOCKSIZE)
     }
     bytes_written += written;
 }
-    printf("bytes_written: %ld", bytes_written);
+    printf("bytes_written: %ld\n", bytes_written);
+    printf("header written\n"); 
     return 0;
 }
 
 int write_file_data(int tar_fd,int f_fd, int f_size)
 {
+    printf("write_file_data starting...\n");
         unsigned char transfer_buff[BLOCKSIZE];
         ssize_t total_bytes_written = 0;
         ssize_t n = 0;
-        while((n = read(f_fd, transfer_buff, BLOCKSIZE)) > 0)
+        //This logic is for the partial writes in the events of system buffering and interrupts... more common in pipes,fifos and sockets
+        //than regular files, but can possibly happen
+        while((f_size <= 0 || total_bytes_written < f_size) &&
+         (n = read(f_fd, transfer_buff, BLOCKSIZE)) > 0)
         {
-            if(write(tar_fd,transfer_buff + total_bytes_written, f_size) != n)
+            ssize_t bytes_written = 0;
+        while(bytes_written < n)
+        {
+            ssize_t written = write(tar_fd, transfer_buff + bytes_written, n - bytes_written);
+        if(written < 0)
             {
                 print_error("Failure to write file data");
                 return -1;
             }
+        bytes_written += written; 
+        }  
+        total_bytes_written += n;
+        }
+        
         if(n < 0)
         {
             print_error("read error");
             return -1;
         }
-        total_bytes_written += n;
-        }
-        
     
     printf("bytes_written: %ld\n", total_bytes_written);
-
-    unsigned char test_buff[total_bytes_written];
-    ssize_t test_num;
-
-    test_num = read(f_fd + BLOCKSIZE, test_buff, total_bytes_written) < 0;
     
-    if(test_num < 0)
-    {
-        print_error("error printing file contents");
-    } 
 
-    for(int i = 0; i < BLOCKSIZE + total_bytes_written; i++)
+    // unsigned char test_buff[total_bytes_written];
+    // ssize_t test_num;
+
+    // test_num = read(f_fd + BLOCKSIZE, test_buff, total_bytes_written) < 0;
+    
+    // if(test_num < 0)
+    // {
+    //     print_error("error printing file contents");
+    // } 
+
+    // for(int i = 0; i < BLOCKSIZE + total_bytes_written; i++)
+    // {
+    //     printf("%c", test_buff[i]);
+    // }
+    // printf("\n...tar contents finished being read");
+   
+    struct stat tar_stats;
+
+    if (fstat(tar_fd, &tar_stats) == -1)
     {
-        printf("%c", test_buff[i]);
+        return -1;
     }
-    printf("\n...tar contents finished being read");
+
+    long int tar_size = (long int)tar_stats.st_size;
+    printf("tar_size in write_file_data: %ld\n", tar_size);
+
+
+   
+   
     return 0;
 }
 

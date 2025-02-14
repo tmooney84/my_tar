@@ -1,8 +1,21 @@
-To-Do Wednesday
+To-Do Friday 2/13/25
 
-- start in append_file and clean up Line 472 by adding
-a check_zeros function that returns 0 true and -1
-if not
+process_entry:
+-ln 458: need to build the zero padding logic
+-recursive directory logic>>> remember the directory header
 
--if those are good then start the write at that 1024 
-from the end
+build out -tf 
+-use the ustar a certain location to find tar file
+-from there locate the name using standard format
+
+build out -xf
+1) Read header (512 bytes).
+2) Extract filename (name field).
+3) Check typeflag (if it's '0', it's a file).
+4) Create a new file using open(name, O_WRONLY | O_CREAT, mode).
+5) Read size bytes from tar and write to the file.
+6) Skip padding (to next 512-byte boundary).
+7) Restore metadata (mode, timestamps).
+
+-use the ustar to build file name
+-restore meta data (look to chatgpt list for mode, date modified)
