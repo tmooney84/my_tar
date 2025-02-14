@@ -1,7 +1,6 @@
 To-Do Friday 2/13/25
 
 process_entry:
--ln 458: need to build the zero padding logic
 -recursive directory logic>>> remember the directory header
 
 build out -tf 

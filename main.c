@@ -396,8 +396,21 @@ struct stat tar_stats;
 
 //need two zero blocks and then need to see if that goes over the size of a record
 int zero_padding = 2 * BLOCKSIZE;
+int padded_data = tar_size + zero_padding;
+int total_required_padding;
 
-int total_required_padding = (RECORDSIZE * BLOCKSIZE) - (tar_size + zero_padding) % (RECORDSIZE * BLOCKSIZE) + zero_padding;
+int rec_num = (tar_size % (RECORDSIZE * BLOCKSIZE) == 0) ? tar_size / (RECORDSIZE * BLOCKSIZE) : tar_size / (RECORDSIZE * BLOCKSIZE) + 1;
+
+int rec_num_wpad = ((padded_data) % (RECORDSIZE * BLOCKSIZE) == 0) ? padded_data / (RECORDSIZE * BLOCKSIZE) : padded_data / (RECORDSIZE * BLOCKSIZE) + 1;
+
+if(rec_num == rec_num_wpad)
+{
+total_required_padding = rec_num * (RECORDSIZE * BLOCKSIZE) - tar_size;
+}
+else
+{
+total_required_padding = rec_num_wpad * (RECORDSIZE * BLOCKSIZE) - tar_size;
+}
 
     printf("padding needed: %d\n", total_required_padding);
 
@@ -409,9 +422,6 @@ if(write_padding(tar_fd, total_required_padding) < 0)
     
     tar_size = (long int)tar_stats.st_size;
     printf("tar_size after padding added: %ld\n", tar_size);
-
-
-
 
     close(tar_fd);
 
@@ -437,7 +447,6 @@ int process_entry(char *path, int tar_fd)
     write_header(hdr, tar_fd);
 
     free(hdr);
-    //close(tar_fd); >>> save for the end of function
 
     if (S_ISREG(arg_stats.st_mode))
     {
@@ -449,51 +458,53 @@ int process_entry(char *path, int tar_fd)
         }
     }
 
-    // else if (S_ISDIR(arg_stats.st_mode))
-    // {
-    //     DIR *dir = opendir(path);
-    //     if (!dir)
-    //     {
-    //         file_error(path);
-    //         free(hdr);
-    //         return;
-    //     }
+    else if (S_ISDIR(arg_stats.st_mode))
+    {
+        DIR *dir = opendir(path);
+        if (!dir)
+        {
+            file_error(path);
+            return -1;
+        }
 
-    //     struct dirent *entry;
+        struct dirent *entry;
 
-    //     while ((entry = readdir(dir)) != NULL)
-    //     {
-    //         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-    //         {
-    //             continue;
-    //         }
-    //         int len = my_strlen(entry->d_name);
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (my_strcmp(entry->d_name, ".") == 0 || my_strcmp(entry->d_name, "..") == 0)
+            {
+                continue;
+            }
+            
+            char full_path[PATH_MAX];
+            my_memset(full_path, 0, PATH_MAX);
+            
+            int entry_name_len = my_strlen(entry->d_name);
+            int path_len = my_strlen(path);
 
-    //         char new_path[PATH_MAX];
-    //         my_strncpy(new_path, entry->d_name, len);
+            my_strncpy(full_path, path, path_len);
+            full_path[path_len] = '/';
+            my_strncpy(full_path + path_len + 1, entry->d_name, entry_name_len);
 
-    //         process_entry(new_path, tar_fd);
+            printf("Full Path Name: %s\n", full_path);
+            if(process_entry(full_path, tar_fd) < 0)
+            {
+                print_error("Failure to process directory entries");
+                closedir(dir);
+                return -1;
+            }
 
 
-    //close(dir); >>> need to figure out how to free these pointers as they go
-    //through recursion
+            }
+    
+    closedir(dir); 
 
-    //     }
-    // fill_header_info
-    // recursively go through folder and append to file
-    // append_directory() ???
-    //}
-
-    // if(v_flag) >>> to print the file that was added
+//    if(v_flag) >>> to print the file that was added
     // {
     //     my_printf("%s\n", names[i]);
     // }
 
-
-    // NEED TO CALCULATE PADDING FOR BLOCKS (512 bytes) AND FOR RECORD SIZE (20 BLOCKS)
-    // Beware of the padding overflowing into another record and having to fill the entire
-    //record
-
+}
 
 return 0;
 }
@@ -549,25 +560,14 @@ int append_file_data(int tar_fd, char *append_file)
     long int tar_size = (long int)tar_stats.st_size;
     printf("tar_size in append: %ld\n", tar_size);
 
-    //int num_blocks;
-    //int num_records;
-
-  //  num_blocks = (f_size % BLOCKSIZE == 0) ? f_size / BLOCKSIZE : f_size / BLOCKSIZE + 1;
-   // int num_blocks = 0;
-
-   // num_records = (num_blocks % RECORDSIZE == 0) ? num_blocks / RECORDSIZE : num_blocks / RECORDSIZE + 1;
-
-   // unsigned char buff[BLOCKSIZE];
-    //ssize_t bytes_read;
-
-    int append_fd = open(append_file, O_RDONLY);
-    //int num_zeros = 0;
+     int append_fd = open(append_file, O_RDONLY);
 
     if(tar_size < BLOCKSIZE)
     {
         print_error("Failure to write file header");
         return -1;
     }
+
     //if the tar is larger than size of header then just append because
     else
     {
@@ -582,56 +582,7 @@ int append_file_data(int tar_fd, char *append_file)
         }
    }
 
-//     //this will seek to see if zeros
-//     if(tar_size > BLOCKSIZE && lseek(tar_fd, 1024, SEEK_END) == -1 && check_zeros)
-//     {
-//         append_error();
-//     }
-
-// //maybe better to use while? instead of for... may be more vulnerable
-// while((bytes_read = read(append_fd, buff, BLOCKSIZE)) > 0)
-// {
-//     if(bytes_read == BLOCKSIZE)
-//     {
-//         write(tar_fd, buff, 512); // write into file
-//         num_blocks++;
-//     }
-
-//         else if(bytes_read < BLOCKSIZE)
-//     {
-//        num_zeros = BLOCKSIZE - bytes_read;
-//        for(int i = 0; i < num_zeros; i++)
-//        {
-
-//        }
-//        num_blocks++;
-//     }
-//     }
-
-//     for (int i = 0; i < num_blocks; i++)
-//     {
-//         // need to account for end of file being less than 512
-//         // add 0 for rest
-//         bytes_read = read(append_fd, buff, 512); // read into buffer
-
-//         //*** need to worry about seek!!! to stay at correct point */
-
-//         if (bytes_read < 512)
-//         {
-//             unsigned char end_bytes[512 - bytes_read];
-
-//             for (int j = 0; j < 512 - bytes_read; j++)
-//             {
-//                 end_bytes[j] = (unsigned char)0;
-//             }
-
-//         }
-//     }
-//      ***close tar_fd and append_fd
-
-//     // after writing file_header info to file FREE file_header !!!
-//     // includes  fill_header(names[i]);>>> MAKE SURE TO START APPENDING WRITE WHEN ZERO PADDING STARTS AND MAKE
-        close(append_fd);
+       close(append_fd);
        printf("closed append_fd\n"); 
          return 0; // if successful may need conditional logic
  }
