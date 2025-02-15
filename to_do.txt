@@ -6,6 +6,8 @@ bugs??? >>> I think the tar file should be able to be extracted with tar
 
 build out -cf 
 make sure that it is differentiated from -rt and overwrites everything if the file already exists
+***Ensure headers are written as 512-byte blocks (not strings) to preserve NULs
+
 
 build out -rf
 make sure that it adds to the end

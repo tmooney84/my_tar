@@ -18,10 +18,14 @@ rm -f my_test.tar test.tar
 
 # Create new tar files
 ./my_tar -cf my_test.tar file1.txt file2.txt
+
 tar -cf test.tar file1.txt file2.txt
 
+echo "test.tar output:"
 cat test.tar || exit 1
+echo "my_test.tar output:"
 cat my_test.tar || exit 1
+
 # Return to the original directory
 cd ~/Projects/my_tar || exit 1
 

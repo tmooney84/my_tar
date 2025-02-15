@@ -162,7 +162,7 @@ void int_to_oct_string(int number, char octal_string[], int os_size)
         number /= 8;
     }
     //***just replaced 15:34 2/14 */
-    octal_string[os_size -1] = '\0';
+    //octal_string[os_size -1] = '\0';
     //printf("octal_string: %s\n", octal_string);
 }
 
@@ -469,15 +469,16 @@ void fill_chksum(header *file_header)
     //printf("initial checksum field: %s\n", file_header->chksum);
     int chksum_total = 0;
 
+    unsigned char *header_bytes = (unsigned char *)file_header;
     // loop over the entire header adding to chksum_total
     // casts to unsigned char (bytes) datatype for looping
-    unsigned char *header_bytes = (unsigned char *)file_header;
     for (int i = 0; i < BLOCKSIZE; i++)
     {
         chksum_total += header_bytes[i];
     }
 
     //printf("checksum field total: %d\n", chksum_total);
-    int_to_oct_string(chksum_total, file_header->chksum, 8);
+    int_to_oct_string(chksum_total, file_header->chksum, 7);
+    file_header->chksum[6] = ' ';
     file_header->chksum[7] = '\0';
 }
