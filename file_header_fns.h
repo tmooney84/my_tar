@@ -36,7 +36,7 @@ typedef struct block
 } block;
 
 header *fill_header_info(char *file);
-void fill_name(char *file, header *file_header);
+int fill_name(char *file, header *file_header);
 void fill_mode(char *file, struct stat file_stats, header *file_header);
 void fill_uid(char *file, struct stat file_stats, header *file_header);
 void fill_gid(char *file, struct stat file_stats, header *file_header);

@@ -235,7 +235,7 @@ int main(int argc, char **argv)
     my_printf("argc: %d\n", argc);
     my_printf("c: %d, f: %d, j: %d, r: %d, t: %d, u: %d, v: %d, x: %d, z: %d\n", c_flag, f_flag, j_flag, r_flag, t_flag, u_flag, v_flag, x_flag, z_flag);
 
-    //*** NEED TO IMPLEMENT num_flag_args ABOVE */
+    //*** NEED TO IMPLEMENT num_flag_args ABOVE  */ 
 
     // argv[2]
     // test whether string file or folder if not error
@@ -476,18 +476,18 @@ int process_entry(char *path, int tar_fd)
                 continue;
             }
             
-            char full_path[PATH_MAX];
-            my_memset(full_path, 0, PATH_MAX);
+            char rel_path[PATH_MAX];
+            my_memset(rel_path, 0, PATH_MAX);
             
             int entry_name_len = my_strlen(entry->d_name);
             int path_len = my_strlen(path);
 
-            my_strncpy(full_path, path, path_len);
-            full_path[path_len] = '/';
-            my_strncpy(full_path + path_len + 1, entry->d_name, entry_name_len);
+            my_strncpy(rel_path, path, path_len);
+            rel_path[path_len] = '/';
+            my_strncpy(rel_path + path_len + 1, entry->d_name, entry_name_len);
 
-            printf("Full Path Name: %s\n", full_path);
-            if(process_entry(full_path, tar_fd) < 0)
+            printf("Full Path Name: %s\n", rel_path);
+            if(process_entry(rel_path, tar_fd) < 0)
             {
                 print_error("Failure to process directory entries");
                 closedir(dir);

@@ -22,6 +22,7 @@
 
 #include "utils.h"
 #include "file_header_fns.h"
+#include "print_error.h"
 
 #define BLOCKSIZE 512
 #define NAMESIZE 100
@@ -29,13 +30,13 @@
 #define TGNMLEN 32
 #define PREFIXSIZE 155
 
-#define TMAGIC "ustar" /* ustar and a null */
+#define TMAGIC "ustar\0" /* ustar and a null */
 #define TMAGLEN 6
-#define TVERSION "00" /* 00 and no null */
+#define TVERSION "\0\0" /* 00 and no null ... "  " seems to be what regular tar uses...*/
 #define TVERSLEN 2
 
 // header *fill_header_info(char *file);
-// void fill_name(char *file, header *file_header);
+// int fill_name(char *file, header *file_header);
 // void fill_mode(char *file, struct stat file_stats, header *file_header);
 // void fill_uid(char *file, struct stat file_stats, header *file_header);
 // void fill_gid(char *file, struct stat file_stats, header *file_header);
@@ -51,6 +52,7 @@
 
 // void ld_to_string(long int number, char string[], int os_size);
 // void int_to_oct_string(int number, char octal_string[], int os_size);
+// void ld_to_oct_string(long int number, char string[], int os_size)
 
 
 
@@ -114,7 +116,7 @@ header *fill_header_info(char *file)
         // free(file_stats);
         return NULL;
     }
-    my_memset(file_header, 0, sizeof(header)); // Zero out the memory
+    my_memset(file_header, '\0', sizeof(header)); // Zero out the memory
 
     // may need to return an int on these functions
     // use -1 for failure and
@@ -139,13 +141,13 @@ header *fill_header_info(char *file)
     fill_chksum(file_header);
 
     //     char magic[6];       /* 257 */
-    my_strncpy(file_header->magic, TMAGIC, TMAGLEN - 1);
+    my_strncpy(file_header->magic, TMAGIC, TMAGLEN);
     // just in case issues with '\0'
-    file_header->magic[TMAGLEN - 1] = '\0';
+    //file_header->magic[TMAGLEN - 1] = '\0';
 
     //     char version[2];     /* 263 */
-    file_header->version[0] = '0';
-    file_header->version[1] = '0';
+    file_header->version[0] = ' ';
+    file_header->version[1] = ' ';
 
     fill_gname(file, file_stats, file_header);
 
@@ -159,7 +161,20 @@ void int_to_oct_string(int number, char octal_string[], int os_size)
         octal_string[i] = '0' + (number % 8);
         number /= 8;
     }
+    //***just replaced 15:34 2/14 */
+    octal_string[os_size -1] = '\0';
     //printf("octal_string: %s\n", octal_string);
+}
+
+void ld_to_oct_string(long int number, char string[], int os_size)
+{
+    for (int i = os_size - 2; i >= 0; i--)
+    {
+        string[i] = '0' + (number % 8);
+        number /= 8;
+    }
+    string[os_size -1] = '\0';
+    //printf("oct_string: %s\n", string);
 }
 
 void ld_to_string(long int number, char string[], int os_size)
@@ -175,46 +190,51 @@ void ld_to_string(long int number, char string[], int os_size)
 // char name[NAMESIZE]; /*   0 */
 // char prefix[155];    /* 345 */
 /* 500 */
-void fill_name(char *file, header *file_header)
+int fill_name(char *file, header *file_header)
 {
-    char absolute_path[PATH_MAX];
-    if (realpath(file, absolute_path) == NULL)
-    {
-        return;
-    }
+    // char absolute_path[PATH_MAX];
+    // if (realpath(file, absolute_path) == NULL)
+    // {
+    //     return;
+    // }
+
     //printf("absolute path: %s", absolute_path);
-    int path_size = my_strlen(absolute_path);
+    int path_size = my_strlen(file);
     int last_slash_point = -1;
 
     // due to my_strncpy placing a '\0' at the end of the string so
     // 99 characters can be the max
     if (path_size < NAMESIZE)
     {
-        my_strncpy(file_header->name, absolute_path, path_size);
+        my_strncpy(file_header->name, file, path_size);
         file_header->name[path_size] = '\0';
         // memset(file_header->prefix, 0, sizeof(file_header->prefix)); // Clear prefix
-        return;
+        return 0;
     }
     if (path_size >= NAMESIZE)
     {
         for (int i = 0; i < path_size; i++)
         {
-            if (absolute_path[i] == '/')
+            if (file[i] == '/')
             {
                 last_slash_point = i;
             }
         }
     }
+
     if (last_slash_point == -1 || last_slash_point >= PREFIXSIZE)
     {
-        return;
+        print_error("Relative Path too large for TAR format");
+        return -1;
     }
-    my_strncpy(file_header->prefix, absolute_path, last_slash_point);
+    my_strncpy(file_header->prefix, file, last_slash_point);
     file_header->prefix[last_slash_point] = '\0';
 
     // Copy the filename portion into name (up to 100 bytes)
-    my_strncpy(file_header->name, absolute_path + last_slash_point + 1, NAMESIZE - 1);
+    my_strncpy(file_header->name, file + last_slash_point + 1, NAMESIZE - 1);
     file_header->name[NAMESIZE - 1] = '\0';
+
+    return 0;
 }
 
 //     char mode[8];        /* 100 */
@@ -253,6 +273,7 @@ void fill_uid(char *file, struct stat file_stats, header *file_header)
 
     int_to_oct_string(uid_int, octal_string, 8);
     my_strncpy(file_header->uid, octal_string, 8);
+    file_header->uid[7] = '\0';
 }
 
 //     char gid[8];         /* 116 */
@@ -270,6 +291,7 @@ void fill_gid(char *file, struct stat file_stats, header *file_header)
 
     int_to_oct_string(gid_int, octal_string, 8);
     my_strncpy(file_header->gid, octal_string, 8);
+    file_header->gid[7] = '\0';
 }
 
 //     char size[12];       /* 124 */
@@ -279,13 +301,17 @@ void fill_size(char *file, struct stat file_stats, header *file_header)
     {
         return;
     }
+    printf("***************************************TEST SIZE***************************\n");
     long int f_size = (long int)file_stats.st_size;
+    printf("size: %ld\n", f_size);
     char string[12];
     my_memset(string, 0, 12);
     string[11] = '\0';
+    printf("size string: %s\n", string);
 
-    ld_to_string(f_size, string, 12);
+    ld_to_oct_string(f_size, string, 12);
     my_strncpy(file_header->size, string, 12);
+    printf("header size string: %s\n", file_header->size);
 }
 
 //     char mtime[12];      /* 136 */
@@ -300,7 +326,7 @@ void fill_mtime(char *file, struct stat file_stats, header *file_header)
     my_memset(string, 0, 12);
     string[11] = '\0';
 
-    ld_to_string(mtime_ld, string, 12);
+    ld_to_oct_string(mtime_ld, string, 12);
     my_strncpy(file_header->mtime, string, 12);
 }
 
@@ -413,8 +439,12 @@ void fill_devmajor(char *file, struct stat file_stats, header *file_header)
     {
         return;
     }
+
+   if (S_ISBLK(file_stats.st_mode) || S_ISCHR(file_stats.st_mode))
+   {
     dev_t file_devmajor = major(file_stats.st_dev);
     int_to_oct_string(file_devmajor, file_header->devmajor, 8);
+   } 
 }
 
 //     char devminor[8];    /* 337 */
@@ -424,8 +454,12 @@ void fill_devminor(char *file, struct stat file_stats, header *file_header)
     {
         return;
     }
+    
+    if (S_ISBLK(file_stats.st_mode) || S_ISCHR(file_stats.st_mode))
+   {
     dev_t file_devminor = minor(file_stats.st_dev);
     int_to_oct_string(file_devminor, file_header->devminor, 8);
+   }
 }
 
 void fill_chksum(header *file_header)
