@@ -2,7 +2,6 @@ To-Do Friday 2/13/25
 
 process_entry:
 bugs??? >>> I think the tar file should be able to be extracted with tar
-//likely need to change the file name and make sure that the logic for my_tar output is identical to tar output
 
 build out -cf 
 make sure that it is differentiated from -rt and overwrites everything if the file already exists

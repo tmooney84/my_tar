@@ -21,10 +21,18 @@ rm -f my_test.tar test.tar
 
 tar -cf test.tar file1.txt file2.txt
 
+
+# Compare tar outputs
+echo "hexdump test.tar vs. my_test.tar"
+diff <(hexdump -C test.tar) <(hexdump -C my_test.tar) && echo "Files match!" || echo "Files differ!"
+
+echo ""
+
 echo "test.tar output:"
 cat test.tar || exit 1
 echo "my_test.tar output:"
 cat my_test.tar || exit 1
+
 
 # Return to the original directory
 cd ~/Projects/my_tar || exit 1

@@ -32,7 +32,7 @@
 
 #define TMAGIC "ustar\0" /* ustar and a null */
 #define TMAGLEN 6
-#define TVERSION "\0\0" /* 00 and no null ... "  " seems to be what regular tar uses...*/
+#define TVERSION "00" /* 00 and no null ... "  " seems to be what regular tar uses...*/
 #define TVERSLEN 2
 
 // header *fill_header_info(char *file);
@@ -136,20 +136,31 @@ header *fill_header_info(char *file)
     fill_typeflag(file, file_stats, file_header);
     fill_linkname(file, file_stats, file_header);
     fill_uname(file, file_stats, file_header);
+    fill_gname(file, file_stats, file_header);
     fill_devmajor(file, file_stats, file_header);
     fill_devminor(file, file_stats, file_header);
     fill_chksum(file_header);
 
+// #define TMAGIC "ustar\0" /* ustar and a null */
+// #define TMAGLEN 6
+// #define TVERSION "00" /* 00 and no null ... "  " seems to be what regular tar uses...*/
+// #define TVERSLEN 2
+
+
+//hard coding ' ' and ' \0' causes the hex to equal test file
+//but the overall alignment of the entire file may be off?
     //     char magic[6];       /* 257 */
-    my_strncpy(file_header->magic, TMAGIC, TMAGLEN);
-    // just in case issues with '\0'
-    //file_header->magic[TMAGLEN - 1] = '\0';
+    file_header->magic[0] = 'u';
+    file_header->magic[1] = 's';
+    file_header->magic[2] = 't';
+    file_header->magic[3] = 'a';
+    file_header->magic[4] = 'r';
+    file_header->magic[5] = ' '; //***/
 
     //     char version[2];     /* 263 */
-    file_header->version[0] = ' ';
-    file_header->version[1] = ' ';
+    file_header->version[0] = ' '; //***/
+    file_header->version[1] = '\0'; //***/
 
-    fill_gname(file, file_stats, file_header);
 
     return file_header;
 }
