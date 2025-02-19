@@ -148,16 +148,16 @@ int write_padding(int tar_fd, int total_required_padding);
 int main(int argc, char **argv)
 {
     // c,f,r,t,u,x            + v, z, j flags
-    int c_flag = 0;
-    int f_flag = 0;
-    int r_flag = 0;
-    int t_flag = 0;
-    int u_flag = 0;
-    int x_flag = 0;
+    // int c_flag = 0;
+    // int f_flag = 0;
+    // int r_flag = 0;
+    // int t_flag = 0;
+    // int u_flag = 0;
+    // int x_flag = 0;
 
-    int v_flag = 0;
-    int z_flag = 0;
-    int j_flag = 0;
+    // int v_flag = 0;
+    // int z_flag = 0;
+    // int j_flag = 0;
     int num_flag_args = 1; // for now is 1 to make it work
 
     int num_names = argc - (num_flag_args + 1);
@@ -179,7 +179,13 @@ int main(int argc, char **argv)
     {
         // int fd = create_file("zzz.txt", O_CREAT | O_RDWR, 0664);
         int fd = create_tar(names, num_names);
-        printf("fd successful if 0: %d\n", fd);
+        if(fd < 0)
+        {
+            print_error("Error creating tar file");
+            return -1;
+        } 
+        
+        //printf("fd successful if 0: %d\n", fd);
         // if (create_tar(names, num_names) == -1) //int v_flag
         // {
         //     return -1;
@@ -200,8 +206,8 @@ int main(int argc, char **argv)
     }
     else if (my_strcmp(argv[1], "-tf") == 0)
     {
-        t_flag = 1;
-        f_flag = 1;
+        //t_flag = 1;
+        //f_flag = 1;
     }
     // else if(my_strcmp(argv[1], "-tvf")==0)
     //     {
@@ -211,13 +217,13 @@ int main(int argc, char **argv)
     //     }
     else if (my_strcmp(argv[1], "-uf") == 0)
     {
-        u_flag = 1;
-        f_flag = 1;
+        //u_flag = 1;
+        //f_flag = 1;
     }
     else if (my_strcmp(argv[1], "-xf") == 0)
     {
-        x_flag = 1;
-        f_flag = 1;
+        //x_flag = 1;
+        //f_flag = 1;
     }
     // else if(my_strcmp(argv[1], "-xvf")==0)
     //     {
@@ -232,8 +238,8 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    my_printf("argc: %d\n", argc);
-    my_printf("c: %d, f: %d, j: %d, r: %d, t: %d, u: %d, v: %d, x: %d, z: %d\n", c_flag, f_flag, j_flag, r_flag, t_flag, u_flag, v_flag, x_flag, z_flag);
+    //my_printf("argc: %d\n", argc);
+   // my_printf("c: %d, f: %d, j: %d, r: %d, t: %d, u: %d, v: %d, x: %d, z: %d\n", c_flag, f_flag, j_flag, r_flag, t_flag, u_flag, v_flag, x_flag, z_flag);
 
     //*** NEED TO IMPLEMENT num_flag_args ABOVE  */
 
@@ -280,7 +286,7 @@ void print_string_array(char **all_names, int num_names)
 {
     for (int i = 0; i < num_names; i++)
     {
-        printf("%s\n", all_names[i]);
+        my_printf("%s\n", all_names[i]);
     }
 }
 
@@ -326,7 +332,7 @@ char **create_names_array(int argc, char **argv, int num_names)
         names_index++;
     }
 
-    print_string_array(names, names_index);
+    //print_string_array(names, names_index);
     return names;
 }
 // 346-416 commented for testing
@@ -350,7 +356,7 @@ int create_tar_file(char *tar_name)
     // create tar file:
     tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
     // tar_fd = create_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
-    printf("tar_fd: %d\n", tar_fd);
+    //printf("tar_fd: %d\n", tar_fd);
     if (tar_fd < 0)
     {
         tarball_error(tar_name);
@@ -364,7 +370,7 @@ int create_tar(char **names, int num_names) // int v_flag
     int tar_fd;
 
     char *tar_name = names[0];
-    printf("tar_name: %s\n", tar_name);
+    //printf("tar_name: %s\n", tar_name);
     tar_fd = create_tar_file(tar_name);
 
     if (tar_fd < 0)
@@ -374,7 +380,7 @@ int create_tar(char **names, int num_names) // int v_flag
 
     for (int i = 1; i < num_names; i++)
     {
-        printf("test\n");
+        //printf("test\n");
         if (process_entry(names[i], tar_fd) < 0)
         {
             my_printf("Error processing %s into tar file\n", names[i]);
@@ -392,7 +398,7 @@ int create_tar(char **names, int num_names) // int v_flag
     }
 
     long int tar_size = (long int)tar_stats.st_size;
-    printf("tar_size before padding: %ld\n", tar_size);
+    //printf("tar_size before padding: %ld\n", tar_size);
 
     // need two zero blocks and then need to see if that goes over the size of a record
     int zero_padding = 2 * BLOCKSIZE;
@@ -412,7 +418,7 @@ int create_tar(char **names, int num_names) // int v_flag
         total_required_padding = rec_num_wpad * (RECORDSIZE * BLOCKSIZE) - tar_size;
     }
 
-    printf("padding needed: %d\n", total_required_padding);
+    //printf("padding needed: %d\n", total_required_padding);
 
     if (write_padding(tar_fd, total_required_padding) < 0)
     {
@@ -421,7 +427,7 @@ int create_tar(char **names, int num_names) // int v_flag
     }
 
     tar_size = (long int)tar_stats.st_size;
-    printf("tar_size after padding added: %ld\n", tar_size);
+    //printf("tar_size after padding added: %ld\n", tar_size);
 
     close(tar_fd);
 
@@ -435,10 +441,10 @@ int process_entry(char *path, int tar_fd)
     {
         file_error(path);
     }
-    tester_main(path);
+    //tester_main(path);
     header *hdr = fill_header_info(path);
 
-    printf("tar_fd: %d\n", tar_fd);
+    //printf("tar_fd: %d\n", tar_fd);
     if (!hdr)
     {
         file_error(path);
@@ -486,7 +492,7 @@ int process_entry(char *path, int tar_fd)
             rel_path[path_len] = '/';
             my_strncpy(rel_path + path_len + 1, entry->d_name, entry_name_len);
 
-            printf("Full Path Name: %s\n", rel_path);
+            //printf("Full Path Name: %s\n", rel_path);
             if (process_entry(rel_path, tar_fd) < 0)
             {
                 print_error("Failure to process directory entries");
@@ -514,7 +520,12 @@ int write_padding(int tar_fd, int total_required_padding)
     ssize_t bytes_written = 0;
 
     int end_data = lseek(tar_fd, 0, SEEK_END);
-    printf("End data: %d\n", end_data);
+    if(end_data < 0)
+    {
+        print_error("Unable to random access tar file");
+        return -1;
+    }
+    // printf("End data: %d\n", end_data);
 
     while (bytes_written < total_required_padding)
     {
@@ -533,7 +544,7 @@ int write_padding(int tar_fd, int total_required_padding)
 
 int append_file_data(int tar_fd, char *append_file)
 {
-    printf("append_file_data named %s started!!!!!!\n", append_file);
+    //printf("append_file_data named %s started!!!!!!\n", append_file);
     // get file size
     struct stat file_stats;
 
@@ -544,7 +555,7 @@ int append_file_data(int tar_fd, char *append_file)
     }
 
     long int f_size = (long int)file_stats.st_size;
-    printf("f_size in append: %ld\n", f_size);
+    //printf("f_size in append: %ld\n", f_size);
 
     // get tar size
     struct stat tar_stats;
@@ -555,7 +566,7 @@ int append_file_data(int tar_fd, char *append_file)
     }
 
     long int tar_size = (long int)tar_stats.st_size;
-    printf("tar_size in append: %ld\n", tar_size);
+    //printf("tar_size in append: %ld\n", tar_size);
 
     int append_fd = open(append_file, O_RDONLY);
 
@@ -580,7 +591,7 @@ int append_file_data(int tar_fd, char *append_file)
     }
 
     close(append_fd);
-    printf("closed append_fd\n");
+   // printf("closed append_fd\n");
     return 0; // if successful may need conditional logic
 }
 
@@ -600,14 +611,14 @@ int write_header(header *hdr, int tar_fd)
         }
         bytes_written += written;
     }
-    printf("bytes_written: %ld\n", bytes_written);
-    printf("header written\n");
+    //printf("bytes_written: %ld\n", bytes_written);
+    //printf("header written\n");
     return 0;
 }
 
 int write_file_data(int tar_fd, int f_fd, int f_size)
 {
-    printf("write_file_data starting...\n");
+   // printf("write_file_data starting...\n");
     unsigned char transfer_buff[BLOCKSIZE];
     ssize_t total_bytes_written = 0;
     ssize_t n = 0;
@@ -636,7 +647,7 @@ int write_file_data(int tar_fd, int f_fd, int f_size)
         return -1;
     }
     // need to write additional bytes to fill data block
-    printf("bytes_written: %ld\n", total_bytes_written);
+    //printf("bytes_written: %ld\n", total_bytes_written);
 
     ssize_t additional_size;
     int add_written;
@@ -661,36 +672,19 @@ int write_file_data(int tar_fd, int f_fd, int f_size)
  
 }
    
-    printf("additional bytes_written: %d\n", add_written);
-    printf("GRAND TOTAL FOR FILE bytes_written: %ld\n", total_bytes_written + add_written);
+    //printf("additional bytes_written: %d\n", add_written);
+   // printf("GRAND TOTAL FOR FILE bytes_written: %ld\n", total_bytes_written + add_written);
 
 
+// struct stat tar_stats;
 
-// unsigned char test_buff[total_bytes_written];
-// ssize_t test_num;
-
-// test_num = read(f_fd + BLOCKSIZE, test_buff, total_bytes_written) < 0;
-
-// if(test_num < 0)
+// if (fstat(tar_fd, &tar_stats) == -1)
 // {
-//     print_error("error printing file contents");
+//     return -1;
 // }
 
-// for(int i = 0; i < BLOCKSIZE + total_bytes_written; i++)
-// {
-//     printf("%c", test_buff[i]);
-// }
-// printf("\n...tar contents finished being read");
-
-struct stat tar_stats;
-
-if (fstat(tar_fd, &tar_stats) == -1)
-{
-    return -1;
-}
-
-long int tar_size = (long int)tar_stats.st_size;
-printf("tar_size in write_file_data: %ld\n", tar_size);
+// long int tar_size = (long int)tar_stats.st_size;
+// printf("tar_size in write_file_data: %ld\n", tar_size);
 
 return 0;
 }
