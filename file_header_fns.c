@@ -490,6 +490,6 @@ void fill_chksum(header *file_header)
 
     //printf("checksum field total: %d\n", chksum_total);
     int_to_oct_string(chksum_total, file_header->chksum, 7);
-    file_header->chksum[6] = ' ';
-    file_header->chksum[7] = '\0';
+    file_header->chksum[6] = '\0';
+    file_header->chksum[7] = ' ';
 }
