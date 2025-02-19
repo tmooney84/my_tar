@@ -122,8 +122,8 @@ int list_tar(int argc, char **argv, int v_flag);
 int extract_tar(int argc, char **argv, int v_flag);
 int process_entry(char *path, int tar_fd);
 int write_header(header *hdr, int tar_fd);
-int write_file_data(int tar_fd,int f_fd, int f_size);
-int write_padding(int tar_fd,int total_required_padding);
+int write_file_data(int tar_fd, int f_fd, int f_size);
+int write_padding(int tar_fd, int total_required_padding);
 
 // for things like this will need a pointer to the beginning
 // of the header and then can use pointer arithmetic to get
@@ -235,7 +235,7 @@ int main(int argc, char **argv)
     my_printf("argc: %d\n", argc);
     my_printf("c: %d, f: %d, j: %d, r: %d, t: %d, u: %d, v: %d, x: %d, z: %d\n", c_flag, f_flag, j_flag, r_flag, t_flag, u_flag, v_flag, x_flag, z_flag);
 
-    //*** NEED TO IMPLEMENT num_flag_args ABOVE  */ 
+    //*** NEED TO IMPLEMENT num_flag_args ABOVE  */
 
     // argv[2]
     // test whether string file or folder if not error
@@ -375,7 +375,7 @@ int create_tar(char **names, int num_names) // int v_flag
     for (int i = 1; i < num_names; i++)
     {
         printf("test\n");
-        if(process_entry(names[i], tar_fd) < 0)
+        if (process_entry(names[i], tar_fd) < 0)
         {
             my_printf("Error processing %s into tar file\n", names[i]);
             return 1;
@@ -384,7 +384,7 @@ int create_tar(char **names, int num_names) // int v_flag
 
     // add_zeros(tar_fd);
 
-struct stat tar_stats;
+    struct stat tar_stats;
 
     if (fstat(tar_fd, &tar_stats) == -1)
     {
@@ -394,32 +394,32 @@ struct stat tar_stats;
     long int tar_size = (long int)tar_stats.st_size;
     printf("tar_size before padding: %ld\n", tar_size);
 
-//need two zero blocks and then need to see if that goes over the size of a record
-int zero_padding = 2 * BLOCKSIZE;
-int padded_data = tar_size + zero_padding;
-int total_required_padding;
+    // need two zero blocks and then need to see if that goes over the size of a record
+    int zero_padding = 2 * BLOCKSIZE;
+    int padded_data = tar_size + zero_padding;
+    int total_required_padding;
 
-int rec_num = (tar_size % (RECORDSIZE * BLOCKSIZE) == 0) ? tar_size / (RECORDSIZE * BLOCKSIZE) : tar_size / (RECORDSIZE * BLOCKSIZE) + 1;
+    int rec_num = (tar_size % (RECORDSIZE * BLOCKSIZE) == 0) ? tar_size / (RECORDSIZE * BLOCKSIZE) : tar_size / (RECORDSIZE * BLOCKSIZE) + 1;
 
-int rec_num_wpad = ((padded_data) % (RECORDSIZE * BLOCKSIZE) == 0) ? padded_data / (RECORDSIZE * BLOCKSIZE) : padded_data / (RECORDSIZE * BLOCKSIZE) + 1;
+    int rec_num_wpad = ((padded_data) % (RECORDSIZE * BLOCKSIZE) == 0) ? padded_data / (RECORDSIZE * BLOCKSIZE) : padded_data / (RECORDSIZE * BLOCKSIZE) + 1;
 
-if(rec_num == rec_num_wpad)
-{
-total_required_padding = rec_num * (RECORDSIZE * BLOCKSIZE) - tar_size;
-}
-else
-{
-total_required_padding = rec_num_wpad * (RECORDSIZE * BLOCKSIZE) - tar_size;
-}
+    if (rec_num == rec_num_wpad)
+    {
+        total_required_padding = rec_num * (RECORDSIZE * BLOCKSIZE) - tar_size;
+    }
+    else
+    {
+        total_required_padding = rec_num_wpad * (RECORDSIZE * BLOCKSIZE) - tar_size;
+    }
 
     printf("padding needed: %d\n", total_required_padding);
 
-if(write_padding(tar_fd, total_required_padding) < 0)
-{
-    print_error("Unable to add padding\n");
-    return -1;
-}
-    
+    if (write_padding(tar_fd, total_required_padding) < 0)
+    {
+        print_error("Unable to add padding\n");
+        return -1;
+    }
+
     tar_size = (long int)tar_stats.st_size;
     printf("tar_size after padding added: %ld\n", tar_size);
 
@@ -475,10 +475,10 @@ int process_entry(char *path, int tar_fd)
             {
                 continue;
             }
-            
+
             char rel_path[PATH_MAX];
             my_memset(rel_path, 0, PATH_MAX);
-            
+
             int entry_name_len = my_strlen(entry->d_name);
             int path_len = my_strlen(path);
 
@@ -487,57 +487,54 @@ int process_entry(char *path, int tar_fd)
             my_strncpy(rel_path + path_len + 1, entry->d_name, entry_name_len);
 
             printf("Full Path Name: %s\n", rel_path);
-            if(process_entry(rel_path, tar_fd) < 0)
+            if (process_entry(rel_path, tar_fd) < 0)
             {
                 print_error("Failure to process directory entries");
                 closedir(dir);
                 return -1;
             }
+        }
 
+        closedir(dir);
 
-            }
-    
-    closedir(dir); 
+        //    if(v_flag) >>> to print the file that was added
+        // {
+        //     my_printf("%s\n", names[i]);
+        // }
+    }
 
-//    if(v_flag) >>> to print the file that was added
-    // {
-    //     my_printf("%s\n", names[i]);
-    // }
-
+    return 0;
 }
 
-return 0;
-}
-
-int write_padding(int tar_fd,int total_required_padding)
+int write_padding(int tar_fd, int total_required_padding)
 {
     char zero_buff[total_required_padding];
     my_memset(zero_buff, 0, total_required_padding);
 
-ssize_t bytes_written = 0;
+    ssize_t bytes_written = 0;
 
     int end_data = lseek(tar_fd, 0, SEEK_END);
     printf("End data: %d\n", end_data);
 
-while(bytes_written < total_required_padding){
-    ssize_t written = write(tar_fd, zero_buff + bytes_written, total_required_padding - bytes_written);
-    if (written < 0)
+    while (bytes_written < total_required_padding)
     {
-        print_error("Failure to write data.\n");
-        return -1;
+        ssize_t written = write(tar_fd, zero_buff + bytes_written, total_required_padding - bytes_written);
+        if (written < 0)
+        {
+            print_error("Failure to write data.\n");
+            return -1;
+        }
+        bytes_written += written;
+        // printf("writing data\n");
     }
-    bytes_written += written;
-    //printf("writing data\n");
+    // printf("bytes_written: %zu\n", bytes_written);
+    return 0;
 }
-    //printf("bytes_written: %zu\n", bytes_written);
-return 0;
-}
-
 
 int append_file_data(int tar_fd, char *append_file)
 {
-        printf("append_file_data named %s started!!!!!!\n", append_file);
-    //get file size 
+    printf("append_file_data named %s started!!!!!!\n", append_file);
+    // get file size
     struct stat file_stats;
 
     // what to do about symbolic links lsat and in tar??
@@ -549,7 +546,7 @@ int append_file_data(int tar_fd, char *append_file)
     long int f_size = (long int)file_stats.st_size;
     printf("f_size in append: %ld\n", f_size);
 
-    //get tar size
+    // get tar size
     struct stat tar_stats;
 
     if (fstat(tar_fd, &tar_stats) == -1)
@@ -560,140 +557,143 @@ int append_file_data(int tar_fd, char *append_file)
     long int tar_size = (long int)tar_stats.st_size;
     printf("tar_size in append: %ld\n", tar_size);
 
-     int append_fd = open(append_file, O_RDONLY);
+    int append_fd = open(append_file, O_RDONLY);
 
-    if(tar_size < BLOCKSIZE)
+    if (tar_size < BLOCKSIZE)
     {
         print_error("Failure to write file header");
         return -1;
     }
 
-    //if the tar is larger than size of header then just append because
+    // if the tar is larger than size of header then just append because
     else
     {
         int ts_n;
 
         ts_n = write_file_data(tar_fd, append_fd, f_size);
 
-        if(ts_n < 0)
+        if (ts_n < 0)
         {
             print_error("Unable to append file data\n");
             return -1;
         }
-   }
+    }
 
-       close(append_fd);
-       printf("closed append_fd\n"); 
-         return 0; // if successful may need conditional logic
- }
+    close(append_fd);
+    printf("closed append_fd\n");
+    return 0; // if successful may need conditional logic
+}
 
 int write_header(header *hdr, int tar_fd)
 {
     unsigned char *hdr_data = (unsigned char *)hdr;
     size_t bytes_written = 0;
 
-while(bytes_written < BLOCKSIZE)
-{
-    //ssize_t >>> [-1, SIZE_MAX] bytes, if issue returns -1
-    ssize_t written = write(tar_fd, hdr_data + bytes_written, BLOCKSIZE);
-    if(written < 0)
+    while (bytes_written < BLOCKSIZE)
     {
-        print_error("write_header: write failed");
-        return -1;
+        // ssize_t >>> [-1, SIZE_MAX] bytes, if issue returns -1
+        ssize_t written = write(tar_fd, hdr_data + bytes_written, BLOCKSIZE);
+        if (written < 0)
+        {
+            print_error("write_header: write failed");
+            return -1;
+        }
+        bytes_written += written;
     }
-    bytes_written += written;
-}
     printf("bytes_written: %ld\n", bytes_written);
-    printf("header written\n"); 
+    printf("header written\n");
     return 0;
 }
 
-int write_file_data(int tar_fd,int f_fd, int f_size)
+int write_file_data(int tar_fd, int f_fd, int f_size)
 {
     printf("write_file_data starting...\n");
-        unsigned char transfer_buff[BLOCKSIZE];
-        ssize_t total_bytes_written = 0;
-        ssize_t n = 0;
-        //This logic is for the partial writes in the events of system buffering and interrupts... more common in pipes,fifos and sockets
-        //than regular files, but can possibly happen
-        while((f_size <= 0 || total_bytes_written < f_size) &&
-         (n = read(f_fd, transfer_buff, BLOCKSIZE)) > 0)
-        {
-            ssize_t bytes_written = 0;
-        while(bytes_written < n)
+    unsigned char transfer_buff[BLOCKSIZE];
+    ssize_t total_bytes_written = 0;
+    ssize_t n = 0;
+    // This logic is for the partial writes in the events of system buffering and interrupts... more common in pipes,fifos and sockets
+    // than regular files, but can possibly happen
+    while ((f_size <= 0 || total_bytes_written < f_size) &&
+           (n = read(f_fd, transfer_buff, BLOCKSIZE)) > 0)
+    {
+        ssize_t bytes_written = 0;
+        while (bytes_written < n)
         {
             ssize_t written = write(tar_fd, transfer_buff + bytes_written, n - bytes_written);
-        if(written < 0)
+            if (written < 0)
             {
                 print_error("Failure to write file data");
                 return -1;
             }
-        bytes_written += written; 
-        }  
+            bytes_written += written;
+        }
         total_bytes_written += n;
-        }
-        
-        if(n < 0)
-        {
-            print_error("read error");
-            return -1;
-        }
-    
-    printf("bytes_written: %ld\n", total_bytes_written);
-    
-
-    // unsigned char test_buff[total_bytes_written];
-    // ssize_t test_num;
-
-    // test_num = read(f_fd + BLOCKSIZE, test_buff, total_bytes_written) < 0;
-    
-    // if(test_num < 0)
-    // {
-    //     print_error("error printing file contents");
-    // } 
-
-    // for(int i = 0; i < BLOCKSIZE + total_bytes_written; i++)
-    // {
-    //     printf("%c", test_buff[i]);
-    // }
-    // printf("\n...tar contents finished being read");
-   
-    struct stat tar_stats;
-
-    if (fstat(tar_fd, &tar_stats) == -1)
-    {
-        return -1;
     }
 
-    long int tar_size = (long int)tar_stats.st_size;
-    printf("tar_size in write_file_data: %ld\n", tar_size);
+    if (n < 0)
+    {
+        print_error("read error");
+        return -1;
+    }
+    // need to write additional bytes to fill data block
+    printf("bytes_written: %ld\n", total_bytes_written);
+
+    ssize_t additional_size;
+    int add_written;
+
+    if (total_bytes_written % BLOCKSIZE != 0)
+    {
+        additional_size = BLOCKSIZE - total_bytes_written % BLOCKSIZE;
+    }
+
+    if(additional_size > 0)
+{
+    unsigned char add_buff[additional_size];
+    my_memset(add_buff, '\0', additional_size);
+
+    add_written = write(tar_fd, add_buff, additional_size);
+
+    if (add_written != additional_size)
+    {
+        print_error("Failure to write file data intrablock padding");
+        return -1;
+    }
+ 
+}
+   
+    printf("additional bytes_written: %d\n", add_written);
+    printf("GRAND TOTAL FOR FILE bytes_written: %ld\n", total_bytes_written + add_written);
 
 
-   
-   
-    return 0;
+
+// unsigned char test_buff[total_bytes_written];
+// ssize_t test_num;
+
+// test_num = read(f_fd + BLOCKSIZE, test_buff, total_bytes_written) < 0;
+
+// if(test_num < 0)
+// {
+//     print_error("error printing file contents");
+// }
+
+// for(int i = 0; i < BLOCKSIZE + total_bytes_written; i++)
+// {
+//     printf("%c", test_buff[i]);
+// }
+// printf("\n...tar contents finished being read");
+
+struct stat tar_stats;
+
+if (fstat(tar_fd, &tar_stats) == -1)
+{
+    return -1;
 }
 
+long int tar_size = (long int)tar_stats.st_size;
+printf("tar_size in write_file_data: %ld\n", tar_size);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+return 0;
+}
 
 //        //check if is file vs dir
 //        file_header_info(names[i]);

@@ -492,4 +492,8 @@ void fill_chksum(header *file_header)
     int_to_oct_string(chksum_total, file_header->chksum, 7);
     file_header->chksum[6] = '\0';
     file_header->chksum[7] = ' ';
+
+    // snprintf(file_header->chksum, 8, "%06o", chksum_total);
+    // file_header->chksum[6] = '\0';
+    // file_header->chksum[7] = ' ';
 }
