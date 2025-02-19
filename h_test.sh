@@ -39,7 +39,7 @@ echo "my_test.tar output:"
 cat my_test.tar || exit 1
 
 # Return to the original directory
-cd ~/Projects/my_tar || exit 1
+cd ~/Projects/my_tar/ || exit 1
 
 echo "Finished copying and updating files"
 
