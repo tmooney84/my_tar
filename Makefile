@@ -42,7 +42,7 @@ re: fclean all
 # CC = gcc
 
 # # Compiler flags
-# CFLAGS = -Wall -Wextra -Werror -std=c11
+# CFLAGS = -Wall -Wextra -Werror -std=c99
 
 # # Target executable name
 # TARGET = my_ls 
