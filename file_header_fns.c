@@ -2,11 +2,10 @@
 // -Alternatively, you can use -D_POSIX_C_SOURCE=200809L to achieve a similar effect.
 // -Using GNU extensions (e.g., -std=gnu99) might also work, but that changes your compilation mode.
 
-
-#define _XOPEN_SOURCE 700 
+#define _XOPEN_SOURCE 700
 
 // #include "print_error.h"
-//#include "my_printf.h"
+// #include "my_printf.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,25 +53,21 @@
 // void int_to_oct_string(int number, char octal_string[], int os_size);
 // void ld_to_oct_string(long int number, char string[], int os_size)
 
-
-
-
-int tester_main(char file_name [])
+int tester_main(char file_name[])
 {
     header *file_header;
 
     // file_header = fill_header_info("my_printf.c");
-       file_header = fill_header_info(file_name);
+    file_header = fill_header_info(file_name);
 
     // file_header = fill_header_info("link_to_myprint");
     // file_header = fill_header_info("asfdsassdfdsafsdafasfssfdsfdasffsddfsdfsdfssdffdfdsdsafsfsdsadfsdfasdfasdfdfasdasfdfasdfasdfasadfsafdafsdadfsafddfasdfadasfasdfdfsadfsadsffadadfadffdasdfsfadsadfsdfafasdfdafasd.txt");
 
     if (!file_header)
     {
-//        my_printf("Error... try again");
+        //        my_printf("Error... try again");
         return 1;
     }
-
 
     // printf("File Name: %s\n", file_header->name);
     // printf("File Mode: %s\n", file_header->mode);
@@ -141,15 +136,14 @@ header *fill_header_info(char *file)
     fill_devminor(file, file_stats, file_header);
     fill_chksum(file_header);
 
-// #define TMAGIC "ustar\0" /* ustar and a null */
-// #define TMAGLEN 6
-// #define TVERSION "00" /* 00 and no null ... "  " seems to be what regular tar uses...*/
-// #define TVERSLEN 2
+    // #define TMAGIC "ustar\0" /* ustar and a null */
+    // #define TMAGLEN 6
+    // #define TVERSION "00" /* 00 and no null ... "  " seems to be what regular tar uses...*/
+    // #define TVERSLEN 2
 
-
-//hard coding ' ' and ' \0' causes the hex to equal test file
-//but the overall alignment of the entire file may be off?
-    //     char magic[6];       /* 257 */
+    // hard coding ' ' and ' \0' causes the hex to equal test file
+    // but the overall alignment of the entire file may be off?
+    //      char magic[6];       /* 257 */
     file_header->magic[0] = 'u';
     file_header->magic[1] = 's';
     file_header->magic[2] = 't';
@@ -158,9 +152,8 @@ header *fill_header_info(char *file)
     file_header->magic[5] = ' '; //***/
 
     //     char version[2];     /* 263 */
-    file_header->version[0] = ' '; //***/
+    file_header->version[0] = ' ';  //***/
     file_header->version[1] = '\0'; //***/
-
 
     return file_header;
 }
@@ -173,8 +166,8 @@ void int_to_oct_string(int number, char octal_string[], int os_size)
         number /= 8;
     }
     //***just replaced 15:34 2/14 */
-    //octal_string[os_size -1] = '\0';
-    //printf("octal_string: %s\n", octal_string);
+    // octal_string[os_size -1] = '\0';
+    // printf("octal_string: %s\n", octal_string);
 }
 
 void ld_to_oct_string(long int number, char string[], int os_size)
@@ -184,8 +177,8 @@ void ld_to_oct_string(long int number, char string[], int os_size)
         string[i] = '0' + (number % 8);
         number /= 8;
     }
-    string[os_size -1] = '\0';
-    //printf("oct_string: %s\n", string);
+    string[os_size - 1] = '\0';
+    // printf("oct_string: %s\n", string);
 }
 
 void ld_to_string(long int number, char string[], int os_size)
@@ -195,7 +188,7 @@ void ld_to_string(long int number, char string[], int os_size)
         string[i] = '0' + (number % 10);
         number /= 10;
     }
-    //printf("dec_string: %s\n", string);
+    // printf("dec_string: %s\n", string);
 }
 
 // char name[NAMESIZE]; /*   0 */
@@ -209,7 +202,7 @@ int fill_name(char *file, header *file_header)
     //     return;
     // }
 
-    //printf("absolute path: %s", absolute_path);
+    // printf("absolute path: %s", absolute_path);
     int path_size = my_strlen(file);
     int last_slash_point = -1;
 
@@ -295,7 +288,7 @@ void fill_gid(char *file, struct stat file_stats, header *file_header)
         return;
     }
     int gid_int = file_stats.st_gid;
-    //printf("gid: %d\n", gid_int);
+    // printf("gid: %d\n", gid_int);
     char octal_string[8];
     my_memset(octal_string, 0, 8);
     octal_string[7] = '\0';
@@ -312,17 +305,17 @@ void fill_size(char *file, struct stat file_stats, header *file_header)
     {
         return;
     }
-    //printf("***************************************TEST SIZE***************************\n");
+    // printf("***************************************TEST SIZE***************************\n");
     long int f_size = (long int)file_stats.st_size;
-    //printf("size: %ld\n", f_size);
+    // printf("size: %ld\n", f_size);
     char string[12];
     my_memset(string, 0, 12);
     string[11] = '\0';
-   // printf("size string: %s\n", string);
+    // printf("size string: %s\n", string);
 
     ld_to_oct_string(f_size, string, 12);
     my_strncpy(file_header->size, string, 12);
-    //printf("header size string: %s\n", file_header->size);
+    // printf("header size string: %s\n", file_header->size);
 }
 
 //     char mtime[12];      /* 136 */
@@ -451,11 +444,11 @@ void fill_devmajor(char *file, struct stat file_stats, header *file_header)
         return;
     }
 
-   if (S_ISBLK(file_stats.st_mode) || S_ISCHR(file_stats.st_mode))
-   {
-    dev_t file_devmajor = major(file_stats.st_dev);
-    int_to_oct_string(file_devmajor, file_header->devmajor, 8);
-   } 
+    if (S_ISBLK(file_stats.st_mode) || S_ISCHR(file_stats.st_mode))
+    {
+        dev_t file_devmajor = major(file_stats.st_dev);
+        int_to_oct_string(file_devmajor, file_header->devmajor, 8);
+    }
 }
 
 //     char devminor[8];    /* 337 */
@@ -465,19 +458,19 @@ void fill_devminor(char *file, struct stat file_stats, header *file_header)
     {
         return;
     }
-    
+
     if (S_ISBLK(file_stats.st_mode) || S_ISCHR(file_stats.st_mode))
-   {
-    dev_t file_devminor = minor(file_stats.st_dev);
-    int_to_oct_string(file_devminor, file_header->devminor, 8);
-   }
+    {
+        dev_t file_devminor = minor(file_stats.st_dev);
+        int_to_oct_string(file_devminor, file_header->devminor, 8);
+    }
 }
 
 void fill_chksum(header *file_header)
 {
     //'0's to fill out checksum field
     my_memset(file_header->chksum, ' ', 8);
-    //printf("initial checksum field: %s\n", file_header->chksum);
+    // printf("initial checksum field: %s\n", file_header->chksum);
     int chksum_total = 0;
 
     unsigned char *header_bytes = (unsigned char *)file_header;
@@ -485,10 +478,18 @@ void fill_chksum(header *file_header)
     // casts to unsigned char (bytes) datatype for looping
     for (int i = 0; i < BLOCKSIZE; i++)
     {
-        chksum_total += header_bytes[i];
+        // not counting chksum portion of header
+        if (i >= 148 && i < 156)
+        {
+            chksum_total += ' ';
+        }
+        else
+        {
+            chksum_total += header_bytes[i];
+        }
     }
 
-    //printf("checksum field total: %d\n", chksum_total);
+    // printf("checksum field total: %d\n", chksum_total);
     int_to_oct_string(chksum_total, file_header->chksum, 7);
     file_header->chksum[6] = '\0';
     file_header->chksum[7] = ' ';
