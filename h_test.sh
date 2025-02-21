@@ -8,10 +8,10 @@ cd ~/Projects/my_tar/
 make my_tar || exit 1
 
 # Copy the built file
-cp ~/Projects/my_tar/my_tar ~/Projects/my_tar/testing123/dir1
+cp ~/Projects/my_tar/my_tar ~/Projects/temp_stuff/testing123/dir1
 
 # Need to switch folders
-cd ~/Projects/my_tar/testing123/dir1/ || exit 1
+cd ~/Projects/temp_stuff/testing123/dir1/ || exit 1
 
 # Remove old tar files (if they exist)
 rm -f my_test.tar test.tar
