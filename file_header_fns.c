@@ -2,7 +2,7 @@
 // -Alternatively, you can use -D_POSIX_C_SOURCE=200809L to achieve a similar effect.
 // -Using GNU extensions (e.g., -std=gnu99) might also work, but that changes your compilation mode.
 
-#define _XOPEN_SOURCE 700
+//#define _XOPEN_SOURCE 700
 
 // #include "print_error.h"
 // #include "my_printf.h"
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/sysmacros.h>
+//#include <sys/sysmacros.h>
 // #include <dirent.h>
 #include <fcntl.h>
 #include <pwd.h>
@@ -338,36 +338,70 @@ void fill_mtime(char *file, struct stat file_stats, header *file_header)
 // DO AT THE END!!!!!!!
 
 //     char typeflag;       /* 156 */
+// void fill_typeflag(char *file, struct stat file_stats, header *file_header)
+// {
+//     if (stat(file, &file_stats) == -1)
+//     {
+//         return;
+//     }
+//     // S_IFMT is a macro for 0170000 Mask to filter out permission bits
+//     switch (file_stats.st_mode & __S_IFMT)
+//     {
+//     case __S_IFREG:
+//         file_header->typeflag = '0';
+//         break; // Regular File
+//     case __S_IFLNK:
+//         file_header->typeflag = '2';
+//         break; // Symbolic Link
+//     case __S_IFCHR:
+//         file_header->typeflag = '3';
+//         break; // Character Device
+//     case __S_IFBLK:
+//         file_header->typeflag = '4';
+//         break; // Block Device
+//     case __S_IFDIR:
+//         file_header->typeflag = '5';
+//         break; // Directory
+//     case __S_IFIFO:
+//         file_header->typeflag = '6';
+//         break; // FIFO (named pipe)
+//     default:
+//         file_header->typeflag = '\0';
+//         break; // Regular File
+//     }
+// }
+
 void fill_typeflag(char *file, struct stat file_stats, header *file_header)
 {
     if (stat(file, &file_stats) == -1)
     {
-        return;
+        return; // If stat fails, return without modifying typeflag
     }
-    // S_IFMT is a macro for 0170000 Mask to filter out permission bits
-    switch (file_stats.st_mode & __S_IFMT)
+
+    // Use the actual values instead of macros
+    switch (file_stats.st_mode & 0170000) // 0170000 is the bitmask for file type
     {
-    case __S_IFREG:
+    case 0100000: // Regular file
         file_header->typeflag = '0';
-        break; // Regular File
-    case __S_IFLNK:
+        break;
+    case 0120000: // Symbolic link
         file_header->typeflag = '2';
-        break; // Symbolic Link
-    case __S_IFCHR:
+        break;
+    case 0020000: // Character device
         file_header->typeflag = '3';
-        break; // Character Device
-    case __S_IFBLK:
+        break;
+    case 0060000: // Block device
         file_header->typeflag = '4';
-        break; // Block Device
-    case __S_IFDIR:
+        break;
+    case 0040000: // Directory
         file_header->typeflag = '5';
-        break; // Directory
-    case __S_IFIFO:
+        break;
+    case 0010000: // FIFO (named pipe)
         file_header->typeflag = '6';
-        break; // FIFO (named pipe)
-    default:
+        break;
+    default: // Unknown or unsupported file type
         file_header->typeflag = '\0';
-        break; // Regular File
+        break;
     }
 }
 
@@ -379,6 +413,7 @@ void fill_linkname(char *file, struct stat file_stats, header *file_header)
         return;
     }
 
+    //if (S_ISLNK(file_stats.st_mode))
     if (S_ISLNK(file_stats.st_mode))
     {
         ssize_t file_len = readlink(file, file_header->linkname, sizeof(file_header->linkname) - 1);
@@ -444,7 +479,9 @@ void fill_devmajor(char *file, struct stat file_stats, header *file_header)
         return;
     }
 
-    if (S_ISBLK(file_stats.st_mode) || S_ISCHR(file_stats.st_mode))
+    //if (S_ISBLK(file_stats.st_mode) || S_ISCHR(file_stats.st_mode))
+    if ((file_stats.st_mode & 0170000) == 0060000 || // Block device
+        (file_stats.st_mode & 0170000) == 0020000)   // Character device
     {
         dev_t file_devmajor = major(file_stats.st_dev);
         int_to_oct_string(file_devmajor, file_header->devmajor, 8);
@@ -459,7 +496,9 @@ void fill_devminor(char *file, struct stat file_stats, header *file_header)
         return;
     }
 
-    if (S_ISBLK(file_stats.st_mode) || S_ISCHR(file_stats.st_mode))
+    //if (S_ISBLK(file_stats.st_mode) || S_ISCHR(file_stats.st_mode))
+    if ((file_stats.st_mode & 0170000) == 0060000 || // Block device
+        (file_stats.st_mode & 0170000) == 0020000)   // Character device
     {
         dev_t file_devminor = minor(file_stats.st_dev);
         int_to_oct_string(file_devminor, file_header->devminor, 8);
