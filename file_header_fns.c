@@ -414,7 +414,7 @@ void fill_linkname(char *file, struct stat file_stats, header *file_header)
     }
 
     //if (S_ISLNK(file_stats.st_mode))
-    if (S_ISLNK(file_stats.st_mode))
+    if ((file_stats.st_mode & 0170000) == 0120000) 
     {
         ssize_t file_len = readlink(file, file_header->linkname, sizeof(file_header->linkname) - 1);
         if (file_len == -1)
@@ -483,7 +483,9 @@ void fill_devmajor(char *file, struct stat file_stats, header *file_header)
     if ((file_stats.st_mode & 0170000) == 0060000 || // Block device
         (file_stats.st_mode & 0170000) == 0020000)   // Character device
     {
-        dev_t file_devmajor = major(file_stats.st_dev);
+        //dev_t file_devmajor = major(file_stats.st_dev);
+        dev_t file_devmajor = (file_stats.st_dev >> 8) & 0xFF; // Assuming major is in the upper 8 bits
+        
         int_to_oct_string(file_devmajor, file_header->devmajor, 8);
     }
 }
@@ -500,7 +502,8 @@ void fill_devminor(char *file, struct stat file_stats, header *file_header)
     if ((file_stats.st_mode & 0170000) == 0060000 || // Block device
         (file_stats.st_mode & 0170000) == 0020000)   // Character device
     {
-        dev_t file_devminor = minor(file_stats.st_dev);
+        //dev_t file_devminor = minor(file_stats.st_dev);
+        dev_t file_devminor = file_stats.st_dev & 0xFF; // Assuming minor is in the lower 8 bits
         int_to_oct_string(file_devminor, file_header->devminor, 8);
     }
 }
