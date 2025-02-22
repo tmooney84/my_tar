@@ -532,7 +532,7 @@ int extract_all_contents(int tar_fd)
    
     char file_name[NAMESIZE];
     char file_flags = O_RDWR | O_CREAT | O_TRUNC;
-    int file_perms = parse_octal(f_header->mode);
+    int file_perms = parse_octal(f_header->mode, sizeof(f_header->mode));
 
     int fd = create_file(f_header->name, file_flags, f_header->mode);
     
@@ -586,9 +586,16 @@ int extract_all_contents(int tar_fd)
 }
 
 
-int parse_octal(char * oct_string)
+int parse_octal(char * str, size_t max_len)
 {
+    size_t num = 0;
+    for(size t i = 0; i < max_len && str[i] >= '0' && str[i] <= '7'; ++i)
+    {
+        num*= 8;
+        num += str[i] - '0';
+    }
 
+    return num;
 }
 
 // int extract_process_entry(char *path, int tar_fd)
