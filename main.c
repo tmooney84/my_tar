@@ -470,6 +470,7 @@ int extract_tar(char **names, int num_names) // int v_flag
 
     if (tar_fd < 0)
     {
+        tarball_error(tar_name);
         return -1;
     }
 
@@ -477,7 +478,6 @@ int extract_tar(char **names, int num_names) // int v_flag
     {
     for (int i = 1; i < num_names; i++)
     {
-        //printf("test\n");
         if (extract_process_entry(names[i], tar_fd) < 0)
         {
             my_printf("Error processing %s into tar file\n", names[i]);
@@ -485,130 +485,159 @@ int extract_tar(char **names, int num_names) // int v_flag
         }
     }
     }
-else(extract_)
-///////////////////////////////////////////
-    // add_zeros(tar_fd);
-
-    struct stat tar_stats;
-
-    if (fstat(tar_fd, &tar_stats) == -1)
-    {
-        return -1;
+else{
+    extract_all_contents(tar_fd);
     }
-
-    long int tar_size = (long int)tar_stats.st_size;
-    //printf("tar_size before padding: %ld\n", tar_size);
-
-    // need two zero blocks and then need to see if that goes over the size of a record
-    int zero_padding = 2 * BLOCKSIZE;
-    int padded_data = tar_size + zero_padding;
-    int total_required_padding;
-
-    int rec_num = (tar_size % (RECORDSIZE * BLOCKSIZE) == 0) ? tar_size / (RECORDSIZE * BLOCKSIZE) : tar_size / (RECORDSIZE * BLOCKSIZE) + 1;
-
-    int rec_num_wpad = ((padded_data) % (RECORDSIZE * BLOCKSIZE) == 0) ? padded_data / (RECORDSIZE * BLOCKSIZE) : padded_data / (RECORDSIZE * BLOCKSIZE) + 1;
-
-    if (rec_num == rec_num_wpad)
-    {
-        total_required_padding = rec_num * (RECORDSIZE * BLOCKSIZE) - tar_size;
-    }
-    else
-    {
-        total_required_padding = rec_num_wpad * (RECORDSIZE * BLOCKSIZE) - tar_size;
-    }
-
-    //printf("padding needed: %d\n", total_required_padding);
-
-    if (write_padding(tar_fd, total_required_padding) < 0)
-    {
-        print_error("Unable to add padding\n");
-        return -1;
-    }
-
-    tar_size = (long int)tar_stats.st_size;
-    //printf("tar_size after padding added: %ld\n", tar_size);
 
     close(tar_fd);
 
     return 0;
+////////////////////////
 }
 
-int extract_process_entry(char *path, int tar_fd)
+
+int extract_all_contents(int tar_fd)
 {
-    struct stat arg_stats;
-    if (stat(path, &arg_stats) < 0)
+   struct stat tar_stats;
+   if(fstat(tar_fd, &tar_stats) == -1)
+   {
+        print_error("Unable to stat tar");
+        return -1;
+   } 
+
+   long int tar_size = (long int)tar_stats.st_size;
+   int num_blocks = tar_size / BLOCKSIZE;
+   if(tar_size / BLOCKSIZE != 0)
+   {
+        print_error("Error non-uniform tar size");
+        return -1;
+   }
+   //for first block
+   char magic_test[6];
+   size_t n = 0;
+
+   //makes sure tar_fd is at beginning of the file
+   lseek(tar_fd, 0, SEEK_SET);
+
+   for(int i = 0; i < num_blocks; i++)
+   {
+    lseek(tar_fd, 157, SEEK_CUR);
+
+   if(n = read(tar_fd, magic_test, 6) < 0)
+   {
+        print_error("Unable to read magic tar file");
+   } 
+    
+   if (my_strcmp(tar_fd, TMAGIC) == 0)
+   {
+    //file or directory found
+    lseek(tar_fd, -157, SEEK_CUR);
+
+    //need to get name and flagtype (for what type of file)
+    //if file and if dir
+
+    //file create file and get stat info set up
+
+    //dir build dir
+
+    //should this go in extract_process_entry...?
+   }
+
+
+
+    if(tar+157[] && tar+158[] && tar+159[] && tar+160[] && tar+161[] && tar+162[])
+   lseek(tar_fd, i * 512, SEEK_CUR);
+   }
+
+   for(int i; i < tar_size; i = i + BLOCKSIZE)
+   {
+    
+    int end_data = lseek(tar_fd, 0, SEEK_SET);
+    if(end_data < 0)
     {
-        file_error(path);
+        print_error("Unable to random access tar file");
+        return -1;
     }
-
-    //need to find file header by magic and see if
-    //name matches path, file or dir... if file extract_file(), if directory create dir
-    //move into and then create file
-
-    //if path create file with the name and copy into 
-    //file
-
-    write_header(hdr, tar_fd);
-
-    free(hdr);
-
-    if (S_ISREG(arg_stats.st_mode))
+        if(tar+157[] && tar+158[] && tar+159[] && tar+160[] && tar+161[] && tar+162[])
     {
-        // if file to append
-        if (append_file_data(tar_fd, path) != 0)
-        {
-            file_error(path);
-            return -1;
-        }
+        
     }
-
-    else if (S_ISDIR(arg_stats.st_mode))
-    {
-        DIR *dir = opendir(path);
-        if (!dir)
-        {
-            file_error(path);
-            return -1;
-        }
-
-        struct dirent *entry;
-
-        while ((entry = readdir(dir)) != NULL)
-        {
-            if (my_strcmp(entry->d_name, ".") == 0 || my_strcmp(entry->d_name, "..") == 0)
-            {
-                continue;
-            }
-
-            char rel_path[PATH_MAX];
-            my_memset(rel_path, 0, PATH_MAX);
-
-            int entry_name_len = my_strlen(entry->d_name);
-            int path_len = my_strlen(path);
-
-            my_strncpy(rel_path, path, path_len);
-            rel_path[path_len] = '/';
-            my_strncpy(rel_path + path_len + 1, entry->d_name, entry_name_len);
-
-            //printf("Full Path Name: %s\n", rel_path);
-            if (process_entry(rel_path, tar_fd) < 0)
-            {
-                print_error("Failure to process directory entries");
-                closedir(dir);
-                return -1;
-            }
-        }
-
-        closedir(dir);
-
-        //    if(v_flag) >>> to print the file that was added
-        // {
-        //     my_printf("%s\n", names[i]);
-        // }
+   
     }
-
-    return 0;
 }
+
+
+
+// int extract_process_entry(char *path, int tar_fd)
+// {
+//     //need to find file header by magic and see if
+//     //name matches path, file or dir... if file extract_file(), if directory create dir
+//     //move into and then create file
+
+//     //if path create file with the name and copy into 
+//     //file
+
+//     write_header(hdr, tar_fd);
+
+//     free(hdr);
+
+//     if (S_ISREG(arg_stats.st_mode))
+//     {
+//         // if file to append
+//         if (append_file_data(tar_fd, path) != 0)
+//         {
+//             file_error(path);
+//             return -1;
+//         }
+//     }
+
+//     else if (S_ISDIR(arg_stats.st_mode))
+//     {
+//         DIR *dir = opendir(path);
+//         if (!dir)
+//         {
+//             file_error(path);
+//             return -1;
+//         }
+
+//         struct dirent *entry;
+
+//         while ((entry = readdir(dir)) != NULL)
+//         {
+//             if (my_strcmp(entry->d_name, ".") == 0 || my_strcmp(entry->d_name, "..") == 0)
+//             {
+//                 continue;
+//             }
+
+//             char rel_path[PATH_MAX];
+//             my_memset(rel_path, 0, PATH_MAX);
+
+//             int entry_name_len = my_strlen(entry->d_name);
+//             int path_len = my_strlen(path);
+
+//             my_strncpy(rel_path, path, path_len);
+//             rel_path[path_len] = '/';
+//             my_strncpy(rel_path + path_len + 1, entry->d_name, entry_name_len);
+
+//             //printf("Full Path Name: %s\n", rel_path);
+//             if (process_entry(rel_path, tar_fd) < 0)
+//             {
+//                 print_error("Failure to process directory entries");
+//                 closedir(dir);
+//                 return -1;
+//             }
+//         }
+
+//         closedir(dir);
+
+//         //    if(v_flag) >>> to print the file that was added
+//         // {
+//         //     my_printf("%s\n", names[i]);
+//         // }
+//     }
+
+//     return 0;
+// }
 
 
 
