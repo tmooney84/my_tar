@@ -498,6 +498,7 @@ else{
 
 int extract_all_contents(int tar_fd)
 {
+
    struct stat tar_stats;
    if(fstat(tar_fd, &tar_stats) == -1)
    {
@@ -516,36 +517,36 @@ int extract_all_contents(int tar_fd)
    char magic_test[6];
    size_t n = 0;
 
-   //makes sure tar_fd is at beginning of the file
+   
+    //makes sure tar_fd is at beginning of the file
    lseek(tar_fd, 0, SEEK_SET);
 
-   for(int i = 0; i < num_blocks; i++)
-   {
-    lseek(tar_fd, 157, SEEK_CUR);
-
-   if(n = read(tar_fd, magic_test, 6) < 0)
+    unsigned char header_block[512];
+   if(n = read(tar_fd, header_block, 512) < 0)
    {
         print_error("Unable to read magic tar file");
-   } 
-    
-   if (my_strcmp(tar_fd, TMAGIC) == 0)
-   {
-    lseek(tar_fd, -162, SEEK_CUR);
+        return -1;
+    }
+
+    struct header *f_header = (struct header *)header_block;
+   
     char file_name[NAMESIZE];
-    int file_flags = O_RDWR | O_CREAT | O_APPEND;
-    int file_perms;
+    char file_flags = O_RDWR | O_CREAT | O_TRUNC;
+    int file_perms = parse_octal(f_header->mode);
 
-    if(n = read(tar_fd, file_name, NAMESIZE) < 0)
-    {
-        print_error("Unable to read magic tar file");
-    }
+    int fd = create_file(f_header->name, file_flags, f_header->mode);
     
-    if(n = read(tar_fd + NAMESIZE, file_flags, NAMESIZE) < 0)
+    if(fill_file(tar_fd, fd) < 0)
     {
-        print_error("Unable to read magic tar file");
+        print_error("Unable to extract file contents");
+        return -1;
     }
-    
-    int fd = create_file(file_name, file_flags, file_perms);
+
+    if(fd < 0)
+    {
+        my_printf("Unable to create %s", file_name);
+        return -1;
+    }
 
     char 
     //file or directory found
@@ -568,7 +569,6 @@ int extract_all_contents(int tar_fd)
 
 
 
-    if(tar+157[] && tar+158[] && tar+159[] && tar+160[] && tar+161[] && tar+162[])
    lseek(tar_fd, i * 512, SEEK_CUR);
    }
 
@@ -581,15 +581,15 @@ int extract_all_contents(int tar_fd)
         print_error("Unable to random access tar file");
         return -1;
     }
-        if(tar+157[] && tar+158[] && tar+159[] && tar+160[] && tar+161[] && tar+162[])
-    {
-        
-    }
    
     }
 }
 
 
+int parse_octal(char * oct_string)
+{
+
+}
 
 // int extract_process_entry(char *path, int tar_fd)
 // {
