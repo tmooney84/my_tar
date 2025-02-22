@@ -530,9 +530,32 @@ int extract_all_contents(int tar_fd)
     
    if (my_strcmp(tar_fd, TMAGIC) == 0)
    {
-    //file or directory found
-    lseek(tar_fd, -157, SEEK_CUR);
+    lseek(tar_fd, -162, SEEK_CUR);
+    char file_name[NAMESIZE];
+    int file_flags = O_RDWR | O_CREAT | O_APPEND;
+    int file_perms;
 
+    if(n = read(tar_fd, file_name, NAMESIZE) < 0)
+    {
+        print_error("Unable to read magic tar file");
+    }
+    
+    if(n = read(tar_fd + NAMESIZE, file_flags, NAMESIZE) < 0)
+    {
+        print_error("Unable to read magic tar file");
+    }
+    
+    int fd = create_file(file_name, file_flags, file_perms);
+
+    char 
+    //file or directory found
+
+
+   }
+   else
+   {
+    lseek(tar_fd, BLOCKSIZE-157, SEEK_CUR);
+   }
     //need to get name and flagtype (for what type of file)
     //if file and if dir
 
