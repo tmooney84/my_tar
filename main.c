@@ -79,26 +79,11 @@ int create_tar_file(char *tar_name);
 int append_file_data(int tar_fd, char *append_file);
 int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
-int extract_tar(int argc, char **argv, int v_flag);
+int extract_tar(char **names, int num_names); // int v_flag
 int process_entry(char *path, int tar_fd);
 int write_header(header *hdr, int tar_fd);
 int write_file_data(int tar_fd, int f_fd, int f_size);
 int write_padding(int tar_fd, int total_required_padding);
-
-// for things like this will need a pointer to the beginning
-// of the header and then can use pointer arithmetic to get
-// where I need to go
-
-// LIKELY NEED TO CALCULATE CHECKSUM... HERE IS AN EXAMPLE FROM DS
-// / Function to calculate checksum
-// unsigned int calculate_checksum(struct file_header *header) {
-//     unsigned int sum = 0;
-//     char *p = (char *)header;
-//     for (int i = 0; i < RECORDSIZE; i++) {
-//         sum += p[i];
-//     }
-//     return sum;
-// }
 
 // tar -czf -t >>> will throw error
 // parse the files but if already c_flag, etc. is 1 then file_error(argv[i])
@@ -182,8 +167,7 @@ int main(int argc, char **argv)
     }
     else if (my_strcmp(argv[1], "-xf") == 0)
     {
-        //x_flag = 1;
-        //f_flag = 1;
+        //extract_tar(names);
     }
     // else if(my_strcmp(argv[1], "-xvf")==0)
     //     {
@@ -471,6 +455,186 @@ int process_entry(char *path, int tar_fd)
 
     return 0;
 }
+
+
+
+
+//////////////////////////////////////////////////
+int extract_tar(char **names, int num_names) // int v_flag
+{
+    int tar_fd;
+
+    char *tar_name = names[0];
+    //printf("tar_name: %s\n", tar_name);
+    tar_fd = open(tar_name, O_RDONLY, TAR_PERMS);
+
+    if (tar_fd < 0)
+    {
+        return -1;
+    }
+
+    if(num_names > 1)
+    {
+    for (int i = 1; i < num_names; i++)
+    {
+        //printf("test\n");
+        if (extract_process_entry(names[i], tar_fd) < 0)
+        {
+            my_printf("Error processing %s into tar file\n", names[i]);
+            return 1;
+        }
+    }
+    }
+else(extract_)
+///////////////////////////////////////////
+    // add_zeros(tar_fd);
+
+    struct stat tar_stats;
+
+    if (fstat(tar_fd, &tar_stats) == -1)
+    {
+        return -1;
+    }
+
+    long int tar_size = (long int)tar_stats.st_size;
+    //printf("tar_size before padding: %ld\n", tar_size);
+
+    // need two zero blocks and then need to see if that goes over the size of a record
+    int zero_padding = 2 * BLOCKSIZE;
+    int padded_data = tar_size + zero_padding;
+    int total_required_padding;
+
+    int rec_num = (tar_size % (RECORDSIZE * BLOCKSIZE) == 0) ? tar_size / (RECORDSIZE * BLOCKSIZE) : tar_size / (RECORDSIZE * BLOCKSIZE) + 1;
+
+    int rec_num_wpad = ((padded_data) % (RECORDSIZE * BLOCKSIZE) == 0) ? padded_data / (RECORDSIZE * BLOCKSIZE) : padded_data / (RECORDSIZE * BLOCKSIZE) + 1;
+
+    if (rec_num == rec_num_wpad)
+    {
+        total_required_padding = rec_num * (RECORDSIZE * BLOCKSIZE) - tar_size;
+    }
+    else
+    {
+        total_required_padding = rec_num_wpad * (RECORDSIZE * BLOCKSIZE) - tar_size;
+    }
+
+    //printf("padding needed: %d\n", total_required_padding);
+
+    if (write_padding(tar_fd, total_required_padding) < 0)
+    {
+        print_error("Unable to add padding\n");
+        return -1;
+    }
+
+    tar_size = (long int)tar_stats.st_size;
+    //printf("tar_size after padding added: %ld\n", tar_size);
+
+    close(tar_fd);
+
+    return 0;
+}
+
+int extract_process_entry(char *path, int tar_fd)
+{
+    struct stat arg_stats;
+    if (stat(path, &arg_stats) < 0)
+    {
+        file_error(path);
+    }
+
+    //need to find file header by magic and see if
+    //name matches path, file or dir... if file extract_file(), if directory create dir
+    //move into and then create file
+
+    //if path create file with the name and copy into 
+    //file
+
+    write_header(hdr, tar_fd);
+
+    free(hdr);
+
+    if (S_ISREG(arg_stats.st_mode))
+    {
+        // if file to append
+        if (append_file_data(tar_fd, path) != 0)
+        {
+            file_error(path);
+            return -1;
+        }
+    }
+
+    else if (S_ISDIR(arg_stats.st_mode))
+    {
+        DIR *dir = opendir(path);
+        if (!dir)
+        {
+            file_error(path);
+            return -1;
+        }
+
+        struct dirent *entry;
+
+        while ((entry = readdir(dir)) != NULL)
+        {
+            if (my_strcmp(entry->d_name, ".") == 0 || my_strcmp(entry->d_name, "..") == 0)
+            {
+                continue;
+            }
+
+            char rel_path[PATH_MAX];
+            my_memset(rel_path, 0, PATH_MAX);
+
+            int entry_name_len = my_strlen(entry->d_name);
+            int path_len = my_strlen(path);
+
+            my_strncpy(rel_path, path, path_len);
+            rel_path[path_len] = '/';
+            my_strncpy(rel_path + path_len + 1, entry->d_name, entry_name_len);
+
+            //printf("Full Path Name: %s\n", rel_path);
+            if (process_entry(rel_path, tar_fd) < 0)
+            {
+                print_error("Failure to process directory entries");
+                closedir(dir);
+                return -1;
+            }
+        }
+
+        closedir(dir);
+
+        //    if(v_flag) >>> to print the file that was added
+        // {
+        //     my_printf("%s\n", names[i]);
+        // }
+    }
+
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 int write_padding(int tar_fd, int total_required_padding)
 {

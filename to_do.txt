@@ -7,6 +7,7 @@ build out -cf
 make sure that it is differentiated from -rt and overwrites everything if the file already exists
 ***Ensure headers are written as 512-byte blocks (not strings) to preserve NULs
 
+***ensure process_entry() is uses binary not macros for checking file types
 
 build out -rf
 make sure that it adds to the end
@@ -25,6 +26,9 @@ build out -xf
 5) Read size bytes from tar and write to the file.
 6) Skip padding (to next 512-byte boundary).
 7) Restore metadata (mode, timestamps).
+
+
+***ensure extract_process_entry() is uses binary not macros for checking file types
 
 -use the ustar to build file name
 -restore meta data (look to chatgpt list for mode, date modified)
