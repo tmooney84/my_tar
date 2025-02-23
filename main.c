@@ -80,6 +80,8 @@ int append_file_data(int tar_fd, char *append_file);
 int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
 int extract_tar(char **names, int num_names); // int v_flag
+int extract_all_contents(int tar_fd);
+int extract_process_entry(header *f_header, int tar_fd);
 int process_entry(char *path, int tar_fd);
 int write_header(header *hdr, int tar_fd);
 int write_file_data(int tar_fd, int f_fd, int f_size);
@@ -478,7 +480,7 @@ int extract_tar(char **names, int num_names) // int v_flag
     {
     for (int i = 1; i < num_names; i++)
     {
-        if (extract_process_entry(names[i], tar_fd) < 0)
+        if (extract_file(names[i], tar_fd) < 0)
         {
             my_printf("Error processing %s into tar file\n", names[i]);
             return 1;
@@ -498,7 +500,6 @@ else{
 
 int extract_all_contents(int tar_fd)
 {
-
    struct stat tar_stats;
    if(fstat(tar_fd, &tar_stats) == -1)
    {
@@ -507,82 +508,109 @@ int extract_all_contents(int tar_fd)
    } 
 
    long int tar_size = (long int)tar_stats.st_size;
-   int num_blocks = tar_size / BLOCKSIZE;
+   int total_blocks = tar_size / BLOCKSIZE;
    if(tar_size / BLOCKSIZE != 0)
    {
         print_error("Error non-uniform tar size");
         return -1;
    }
-   //for first block
-   char magic_test[6];
-   size_t n = 0;
-
+   
+    int current_block = 0;
    
     //makes sure tar_fd is at beginning of the file
    lseek(tar_fd, 0, SEEK_SET);
 
     unsigned char header_block[512];
-   if(n = read(tar_fd, header_block, 512) < 0)
-   {
+  
+    //***********************need to count the blocks being gone through in sub-functions */
+   // while(tar_fd < SEEK_END)
+    {
+    
+    while(current_block < total_blocks)
+    {
+    int n = 0;
+    
+    if(n = read(tar_fd, header_block, 512) < 0 && n != 512)
+    {
         print_error("Unable to read magic tar file");
         return -1;
     }
+    current_block++; 
 
     struct header *f_header = (struct header *)header_block;
+
+    //check if file header is for file or dir
+
+    //if(my_strcmp(f_header->magic, TMAGIC) == 0)
+    if(my_strcmp(f_header->magic, "ustar") == 0)
+    {
+        if(extract_process_entry(f_header, tar_fd) < 0)
+        {
+            print_error("Error... unable to extract file from tar");
+            return -1;
+        }
+    } 
+    }
+ //************** */   num_blocks++;
+}
+}
    
-    char file_name[NAMESIZE];
+
+int extract_process_entry(header *f_header, int tar_fd)
+{
+    char file_name[NAMESIZE] = f_header->name;
     char file_flags = O_RDWR | O_CREAT | O_TRUNC;
     int file_perms = parse_octal(f_header->mode, sizeof(f_header->mode));
+    char file_type = f_header->typeflag;
 
-    int fd = create_file(f_header->name, file_flags, f_header->mode);
+    //need to check how this covers symbolic links
+    //if reg file or symbolic link 0, 2 
+    if(file_type == '0' || file_type == '2')
+    {
+    int fd = create_file(file_name, file_flags, file_perms);
+        if(fd < 0)
+    {
+        my_printf("Unable to create %s", file_name);
+        return -1;
+    }   
     
-    if(fill_file(tar_fd, fd) < 0)
+    int num = 0;
+    int num_blocks = 0;
+        if(num = fill_file(tar_fd, fd) < 0)
     {
         print_error("Unable to extract file contents");
         return -1;
     }
 
-    if(fd < 0)
+    //***********************better to do the logic this way??? */
+   //or pass back total blocks as num from fill_file !!! 
+   //that would be better!!! 
+    if(num % BLOCKSIZE != 0)
     {
-        my_printf("Unable to create %s", file_name);
-        return -1;
+        num_blocks = num / BLOCKSIZE + 1;
     }
-
-    char 
-    //file or directory found
-
-
-   }
-   else
-   {
-    lseek(tar_fd, BLOCKSIZE-157, SEEK_CUR);
-   }
-    //need to get name and flagtype (for what type of file)
-    //if file and if dir
-
-    //file create file and get stat info set up
-
-    //dir build dir
-
-    //should this go in extract_process_entry...?
-   }
-
-
-
-   lseek(tar_fd, i * 512, SEEK_CUR);
-   }
-
-   for(int i; i < tar_size; i = i + BLOCKSIZE)
-   {
-    
-    int end_data = lseek(tar_fd, 0, SEEK_SET);
-    if(end_data < 0)
+    else
     {
-        print_error("Unable to random access tar file");
-        return -1;
+        num_blocks;
     }
-   
+
+    return num_blocks;
     }
+
+    //if directory
+    else(file_type == '5')
+    //symbolic link
+    {
+
+    }
+}
+
+int fill_file(tar_fd, fd)
+{
+    int num;
+    //ok so I need to start tar_fd and use a 512-buffer to copy over to the 
+
+    return num;
 }
 
 

@@ -1,4 +1,4 @@
-To-Do Friday 2/13/25
+To-Do Sunday 2/23/25
 
 process_entry:
 bugs??? >>> I think the tar file should be able to be extracted with tar
@@ -19,6 +19,12 @@ build out -tf
 -from there locate the name using standard format
 
 build out -xf
+
+*** start with line 585 and get block counting logic 
+in place to then start copying file and return number of 
+blocks used by the file??? how to account for the zeroed 
+blocks and record...
+
 1) Read header (512 bytes).
 2) Extract filename (name field).
 3) Check typeflag (if it's '0', it's a file).
