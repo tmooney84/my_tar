@@ -1,4 +1,7 @@
-To-Do Sunday 2/23/25
+To-Do Sunday 2/24/25
+
+***!!!NEED TO CLOSE FILE DESCRIPTORS THROUGHOUT THE PROGRAM!!!
+
 
 process_entry:
 bugs??? >>> I think the tar file should be able to be extracted with tar

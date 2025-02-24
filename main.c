@@ -40,6 +40,7 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #include <fcntl.h>
 #include <pwd.h>
 #include <grp.h>
+#include <utime.h>
 
 #include "utils.h"
 #include "my_printf.h"
@@ -81,7 +82,7 @@ int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
 int extract_tar(char **names, int num_names); // int v_flag
 int extract_all_contents(int tar_fd);
-int extract_process_entry(header *f_header, int tar_fd);
+int extract_process_entry(header *f_header, int tar_fd, int current_block);
 int process_entry(char *path, int tar_fd);
 int write_header(header *hdr, int tar_fd);
 int write_file_data(int dst_fd, int src_fd, int f_size);
@@ -459,9 +460,6 @@ int process_entry(char *path, int tar_fd)
 }
 
 
-
-
-//////////////////////////////////////////////////
 int extract_tar(char **names, int num_names) // int v_flag
 {
     int tar_fd;
@@ -494,9 +492,28 @@ else{
     close(tar_fd);
 
     return 0;
-////////////////////////
 }
 
+/*
+For Special Files and Links:
+
+Create the File/Directory/Link:
+Use the name (and prefix) fields to create the file or directory. For example:
+
+For a regular file, use open()/creat() and write the data.
+For a directory, use mkdir().
+For a symlink, use symlink() with the linkname field.
+
+
+Special Files:
+
+Device Files: If the file is a character or block device (as indicated by the typeflag), use mknod() with the appropriate major and minor numbers.
+FIFO (Named Pipe): Use mkfifo() to create a FIFO.
+Symlinks: Use symlink() to create a symbolic link, using the header’s linkname as the target.
+
+mapping to struct stat:
+For device files, st_rdev is set using devmajor and devminor
+*/
 
 int extract_all_contents(int tar_fd)
 {
@@ -516,16 +533,13 @@ int extract_all_contents(int tar_fd)
    }
    
     int current_block = 0;
-   
+    
     //makes sure tar_fd is at beginning of the file
    lseek(tar_fd, 0, SEEK_SET);
 
     unsigned char header_block[512];
   
-    //***********************need to count the blocks being gone through in sub-functions */
-   // while(tar_fd < SEEK_END)
     {
-    
     while(current_block < total_blocks)
     {
     int n = 0;
@@ -554,8 +568,9 @@ int extract_all_contents(int tar_fd)
         current_block = returned_blocks; 
     } 
     }
- //************** */   num_blocks++;
 }
+
+return 0;
 }
    
 
@@ -567,8 +582,7 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
     char file_type = f_header->typeflag;
     long int file_size = (long int)parse_octal(f_header->size, 12);
 
-    //need to check how this covers symbolic links
-    //if reg file or symbolic link 0, 2 
+    //if reg file or symbolic link 0, 2  // need to check how this covers symbolic links
     if(file_type == '0' || file_type == '2')
     {
     int fd = create_file(file_name, file_flags, file_perms);
@@ -581,85 +595,88 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
     long int num = 0;
     int num_blocks = 0;
 
+    //may need to create a fill_file fn to write stat data as 
         if(num = write_file_data(tar_fd, fd, file_size) < 0 && num != file_size)
     {
         print_error("Unable to extract file contents");
         return -1;
     }
 
-    //***********************better to do the logic this way??? */
-   //or pass back total blocks as num from fill_file !!! 
-   //that would be better!!!
+    if(map_file_metadata(f_header, fd) < 0)
+    {
+        print_error("unable to map header data to file stat");
+        return -1;
+    }    
+
+
    num_blocks = num % BLOCKSIZE != 0 ? num / BLOCKSIZE + 1 : num / BLOCKSIZE; 
 
-    return current_block + num_blocks;
+    current_block += num_blocks;
     }
 
     //if directory
     else if(file_type == '5')
-    //symbolic link
     {
-        DIR *dir = opendir(file_name);
-        if(!dir)
+        int ret = mkdir(file_name, S_IRWXU);
+        if(ret < 0)
         {
-            file_error(file_name);
+            print_error("mkdir failed");
             return -1;
         }
-
-        struct dirent *entry;
-
-        while((entry = readdir(dir)) != NULL)
-        {
-            if(my_strcmp(entry->d_name, ".") == 0 || my_strcmp(entry->d_name, "..") == 0)
-            {
-                continue;
-            }
-        char rel_path[PATH_MAX];
-        my_memset(rel_path, 0, PATH_MAX);
-
-        int entry_name_len = my_strlen(entry->d_name);
-        int path_len = my_strlen(file_name);
-
-        }
     }
 
-    else
-    {
-        print_error("Unable to extract file for tar");
-    }
+    return current_block;
 }
 
 
+int map_file_metadata(header * f_header, int fd)
+{
+    struct stat file_stats;
+    if(fstat(fd, &file_stats) == -1)
+    {
+        return -1;
+    }
+
+    //** need to make sure mode has the compressed permissions and file type */
+    if(file_stats.st_mode = (mode_t)parse_octal(f_header->mode, 8) == 0)
+    {
+        print_error("Unable to set mode");
+        return -1;
+    }
 
 
+    file_stats.st_uid = (unsigned int)parse_octal(f_header->uid, 8);
+    {
+        print_error("Unable to set uid");
+        return -1;
+    }
+    file_stats.st_gid = (unsigned int)parse_octal(f_header->gid, 8);
+    {
+        print_error("Unable to set gid");
+        return -1;
+    }
+    file_stats.st_size = lseek(fd, 0, SEEK_END); //could do parse_octal(f_header->size, 12);
+    {
+        print_error("Unable to set size");
+        return -1;
+    }
+    file_stats.st_mtime = parse_octal(f_header->mtime, 12);
+    {
+        print_error("Unable to set mtime");
+        return -1;
+    }
 
+    /* REMEMBER OCT STRING TO INT
+   st_mode    chmod()   → Derived from the tar header’s mode and typeflag
+st_uid and st_gid    chown()   → Derived from the header’s uid and gid
+st_size → Tells you how many bytes of file data to read
+st_mtime    utime()    futime()   → Derived from the header’s mtime 
 
+map_file_data(f_header, fd)
+*/
+return 0;
+}
 
-//*****WILL DELETE MOST LIKELY  +24 Lines*/
-// int fill_file(tar_fd, fd)
-// {
-//     unsigned char header_block[512];
-//     int n;
-//     int filled_bytes;
-//     //ok so I need to start tar_fd and use a 512-buffer to copy over to the
-//     if(n = read(tar_fd, header_block, 512) < 0 && num != 512)
-//     {
-//         print_error("Unable to read magic tar file");
-//         return -1;
-//     }
-
-//     /*
-//     while((n = read(0, buf, BUFSIZ)) > 0) 
-//     {
-//         write(1, buf, n);
-//         return 0; 
-//     }
-//     */
-
-
-//     //returning num is the number of bytes, the amount of blocks logic is in calling fn
-//     return filled_bytes;
-// }
 
 
 size_t parse_octal(char * str, size_t max_len)
