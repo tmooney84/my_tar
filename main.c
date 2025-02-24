@@ -84,7 +84,7 @@ int extract_all_contents(int tar_fd);
 int extract_process_entry(header *f_header, int tar_fd);
 int process_entry(char *path, int tar_fd);
 int write_header(header *hdr, int tar_fd);
-int write_file_data(int tar_fd, int f_fd, int f_size);
+int write_file_data(int dst_fd, int src_fd, int f_size);
 int write_padding(int tar_fd, int total_required_padding);
 
 // tar -czf -t >>> will throw error
@@ -529,6 +529,7 @@ int extract_all_contents(int tar_fd)
     while(current_block < total_blocks)
     {
     int n = 0;
+    int returned_blocks = 0;
     
     if(n = read(tar_fd, header_block, 512) < 0 && n != 512)
     {
@@ -544,11 +545,13 @@ int extract_all_contents(int tar_fd)
     //if(my_strcmp(f_header->magic, TMAGIC) == 0)
     if(my_strcmp(f_header->magic, "ustar") == 0)
     {
-        if(extract_process_entry(f_header, tar_fd) < 0)
+        //do I need written_blocks?
+        if(returned_blocks = extract_process_entry(f_header, tar_fd, current_block) < 0)
         {
             print_error("Error... unable to extract file from tar");
             return -1;
         }
+        current_block = returned_blocks; 
     } 
     }
  //************** */   num_blocks++;
@@ -556,12 +559,13 @@ int extract_all_contents(int tar_fd)
 }
    
 
-int extract_process_entry(header *f_header, int tar_fd)
+int extract_process_entry(header *f_header, int tar_fd, int current_block)
 {
     char file_name[NAMESIZE] = f_header->name;
     char file_flags = O_RDWR | O_CREAT | O_TRUNC;
-    int file_perms = parse_octal(f_header->mode, sizeof(f_header->mode));
+    int file_perms = (int)parse_octal(f_header->mode, sizeof(f_header->mode));
     char file_type = f_header->typeflag;
+    long int file_size = (long int)parse_octal(f_header->size, 12);
 
     //need to check how this covers symbolic links
     //if reg file or symbolic link 0, 2 
@@ -573,10 +577,11 @@ int extract_process_entry(header *f_header, int tar_fd)
         my_printf("Unable to create %s", file_name);
         return -1;
     }   
-    
-    int num = 0;
+
+    long int num = 0;
     int num_blocks = 0;
-        if(num = fill_file(tar_fd, fd) < 0)
+
+        if(num = write_file_data(tar_fd, fd, file_size) < 0 && num != file_size)
     {
         print_error("Unable to extract file contents");
         return -1;
@@ -584,40 +589,84 @@ int extract_process_entry(header *f_header, int tar_fd)
 
     //***********************better to do the logic this way??? */
    //or pass back total blocks as num from fill_file !!! 
-   //that would be better!!! 
-    if(num % BLOCKSIZE != 0)
-    {
-        num_blocks = num / BLOCKSIZE + 1;
-    }
-    else
-    {
-        num_blocks;
-    }
+   //that would be better!!!
+   num_blocks = num % BLOCKSIZE != 0 ? num / BLOCKSIZE + 1 : num / BLOCKSIZE; 
 
-    return num_blocks;
+    return current_block + num_blocks;
     }
 
     //if directory
-    else(file_type == '5')
+    else if(file_type == '5')
     //symbolic link
     {
+        DIR *dir = opendir(file_name);
+        if(!dir)
+        {
+            file_error(file_name);
+            return -1;
+        }
 
+        struct dirent *entry;
+
+        while((entry = readdir(dir)) != NULL)
+        {
+            if(my_strcmp(entry->d_name, ".") == 0 || my_strcmp(entry->d_name, "..") == 0)
+            {
+                continue;
+            }
+        char rel_path[PATH_MAX];
+        my_memset(rel_path, 0, PATH_MAX);
+
+        int entry_name_len = my_strlen(entry->d_name);
+        int path_len = my_strlen(file_name);
+
+        }
+    }
+
+    else
+    {
+        print_error("Unable to extract file for tar");
     }
 }
 
-int fill_file(tar_fd, fd)
-{
-    int num;
-    //ok so I need to start tar_fd and use a 512-buffer to copy over to the 
-
-    return num;
-}
 
 
-int parse_octal(char * str, size_t max_len)
+
+
+
+
+//*****WILL DELETE MOST LIKELY  +24 Lines*/
+// int fill_file(tar_fd, fd)
+// {
+//     unsigned char header_block[512];
+//     int n;
+//     int filled_bytes;
+//     //ok so I need to start tar_fd and use a 512-buffer to copy over to the
+//     if(n = read(tar_fd, header_block, 512) < 0 && num != 512)
+//     {
+//         print_error("Unable to read magic tar file");
+//         return -1;
+//     }
+
+//     /*
+//     while((n = read(0, buf, BUFSIZ)) > 0) 
+//     {
+//         write(1, buf, n);
+//         return 0; 
+//     }
+//     */
+
+
+//     //returning num is the number of bytes, the amount of blocks logic is in calling fn
+//     return filled_bytes;
+// }
+
+
+size_t parse_octal(char * str, size_t max_len)
 {
     size_t num = 0;
-    for(size t i = 0; i < max_len && str[i] >= '0' && str[i] <= '7'; ++i)
+    size_t i = 0;
+    for(i = 0; i < max_len && str[i] >= '0' && str[i] <= '7'; ++i)
     {
         num*= 8;
         num += str[i] - '0';
@@ -625,6 +674,9 @@ int parse_octal(char * str, size_t max_len)
 
     return num;
 }
+
+
+
 
 // int extract_process_entry(char *path, int tar_fd)
 // {
@@ -827,7 +879,7 @@ int write_header(header *hdr, int tar_fd)
     return 0;
 }
 
-int write_file_data(int tar_fd, int f_fd, int f_size)
+int write_file_data(int dst_fd, int src_fd, int f_size)
 {
    // printf("write_file_data starting...\n");
     unsigned char transfer_buff[BLOCKSIZE];
@@ -836,12 +888,12 @@ int write_file_data(int tar_fd, int f_fd, int f_size)
     // This logic is for the partial writes in the events of system buffering and interrupts... more common in pipes,fifos and sockets
     // than regular files, but can possibly happen
     while ((f_size <= 0 || total_bytes_written < f_size) &&
-           (n = read(f_fd, transfer_buff, BLOCKSIZE)) > 0)
+           (n = read(src_fd, transfer_buff, BLOCKSIZE)) > 0)
     {
         ssize_t bytes_written = 0;
         while (bytes_written < n)
         {
-            ssize_t written = write(tar_fd, transfer_buff + bytes_written, n - bytes_written);
+            ssize_t written = write(dst_fd, transfer_buff + bytes_written, n - bytes_written);
             if (written < 0)
             {
                 print_error("Failure to write file data");
@@ -873,7 +925,7 @@ int write_file_data(int tar_fd, int f_fd, int f_size)
     unsigned char add_buff[additional_size];
     my_memset(add_buff, '\0', additional_size);
 
-    add_written = write(tar_fd, add_buff, additional_size);
+    add_written = write(dst_fd, add_buff, additional_size);
 
     if (add_written != additional_size)
     {
