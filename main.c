@@ -87,6 +87,7 @@ int process_entry(char *path, int tar_fd);
 int write_header(header *hdr, int tar_fd);
 int write_file_data(int dst_fd, int src_fd, int f_size);
 int write_padding(int tar_fd, int total_required_padding);
+int map_file_metadata(header * f_header, int fd);
 
 // tar -czf -t >>> will throw error
 // parse the files but if already c_flag, etc. is 1 then file_error(argv[i])
@@ -612,17 +613,26 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
    num_blocks = num % BLOCKSIZE != 0 ? num / BLOCKSIZE + 1 : num / BLOCKSIZE; 
 
     current_block += num_blocks;
-    }
+    close(fd);    
+}
 
     //if directory
     else if(file_type == '5')
     {
-        int ret = mkdir(file_name, S_IRWXU);
-        if(ret < 0)
+        //need to put in the correct permission bits mode
+        int dir_fd = mkdir(file_name, S_IRWXU);
+        if(dir_fd < 0)
         {
             print_error("mkdir failed");
             return -1;
         }
+    
+        if(map_file_metadata(f_header, dir_fd) < 0)
+    {
+        print_error("unable to map header data to file stat");
+        return -1;
+    }
+    
     }
 
     return current_block;
@@ -638,11 +648,32 @@ int map_file_metadata(header * f_header, int fd)
     }
 
     //** need to make sure mode has the compressed permissions and file type */
-    if(file_stats.st_mode = (mode_t)parse_octal(f_header->mode, 8) == 0)
+    switch(f_header->typeflag)
+    {
+    case '0': 
+    if(file_stats.st_mode = (mode_t) 0100000 & parse_octal(f_header->mode, 8) == 0)
     {
         print_error("Unable to set mode");
         return -1;
     }
+    break;
+
+    case '2': 
+    if(file_stats.st_mode = (mode_t) 0120000 & parse_octal(f_header->mode, 8) == 0);
+    {
+        print_error("Unable to set mode");
+        return -1;
+    }
+    break;
+
+    default:
+    file_stats.st_mode = 0;
+    print_error("Unable to set mode");
+    break;
+    }
+
+    ///...if others needed get from fill_typeflag 
+    
 
 
     file_stats.st_uid = (unsigned int)parse_octal(f_header->uid, 8);
@@ -665,6 +696,9 @@ int map_file_metadata(header * f_header, int fd)
         print_error("Unable to set mtime");
         return -1;
     }
+
+//need to look for fill_devmajor and fill_devminor if need to fill st_dev and st_rdev for block and char device 
+
 
     /* REMEMBER OCT STRING TO INT
    st_mode    chmod()   → Derived from the tar header’s mode and typeflag
