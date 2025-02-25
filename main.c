@@ -620,6 +620,13 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
     else if(file_type == '5')
     {
         //need to put in the correct permission bits mode
+        /*
+        so I need to set the permissions from the file header thus
+        maybe a switch related to each of the modes... is S_IRWXU in 
+        octal?
+
+        
+        */
         int dir_fd = mkdir(file_name, S_IRWXU);
         if(dir_fd < 0)
         {
