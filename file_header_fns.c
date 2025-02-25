@@ -69,22 +69,22 @@ int tester_main(char file_name[])
         return 1;
     }
 
-    // printf("File Name: %s\n", file_header->name);
-    // printf("File Mode: %s\n", file_header->mode);
-    // printf("File UID: %s\n", file_header->uid);
-    // printf("File GID: %s\n", file_header->gid);
-    // printf("File Size: %s\n", file_header->size);
-    // printf("File mtime: %s\n", file_header->mtime);
-    // printf("File chksum: %s\n", file_header->chksum);
-    // printf("File typeflag: %c\n", file_header->typeflag);
-    // printf("File linkname: %s\n", file_header->linkname);
-    // printf("File magic: %s\n", file_header->magic);
-    // printf("File version: %.2s\n", file_header->version);
-    // printf("File uname: %s\n", file_header->uname);
-    // printf("File gname: %s\n", file_header->gname);
-    // printf("File devmajor: %s\n", file_header->devmajor);
-    // printf("File devminor: %s\n", file_header->devminor);
-    // printf("File prefix: %s\n", file_header->prefix);
+    printf("File Name: %s\n", file_header->name);
+    printf("File Mode: %s\n", file_header->mode);
+    printf("File UID: %s\n", file_header->uid);
+    printf("File GID: %s\n", file_header->gid);
+    printf("File Size: %s\n", file_header->size);
+    printf("File mtime: %s\n", file_header->mtime);
+    printf("File chksum: %s\n", file_header->chksum);
+    printf("File typeflag: %c\n", file_header->typeflag);
+    printf("File linkname: %s\n", file_header->linkname);
+    printf("File magic: %s\n", file_header->magic);
+    printf("File version: %.2s\n", file_header->version);
+    printf("File uname: %s\n", file_header->uname);
+    printf("File gname: %s\n", file_header->gname);
+    printf("File devmajor: %s\n", file_header->devmajor);
+    printf("File devminor: %s\n", file_header->devminor);
+    printf("File prefix: %s\n", file_header->prefix);
 
     // unsigned char *th = (unsigned char *)file_header;
     // for(int i = 0; i < 512; i++)

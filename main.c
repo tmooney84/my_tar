@@ -152,7 +152,7 @@ int main(int argc, char **argv)
         // }
 
         // TEST file_header_fns.c IN main:
-        // tester_main(argv[2]);
+        tester_main(argv[2]);
         return 0;
     }
     // else if(my_strcmp(argv[1], "-cvf")==0)
