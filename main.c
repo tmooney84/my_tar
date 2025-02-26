@@ -64,7 +64,6 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #define TVERSION "00" /* 00 and no null */
 #define TVERSLEN 2
 
-
 void flag_error();
 void file_error(char *file_name);
 void failed_alloc();
@@ -81,13 +80,14 @@ int append_file_data(int tar_fd, char *append_file);
 int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
 int extract_tar(char **names, int num_names); // int v_flag
-int extract_all_contents(int tar_fd);
+int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names);
 int extract_process_entry(header *f_header, int tar_fd, int current_block);
 int process_entry(char *path, int tar_fd);
 int write_header(header *hdr, int tar_fd);
 int write_file_data(int dst_fd, int src_fd, int f_size);
 int write_padding(int tar_fd, int total_required_padding);
-int map_file_metadata(header * f_header, int fd);
+int map_file_metadata(header *f_header, int fd);
+size_t parse_octal(char *str, size_t max_len);
 
 // tar -czf -t >>> will throw error
 // parse the files but if already c_flag, etc. is 1 then file_error(argv[i])
@@ -128,17 +128,17 @@ int main(int argc, char **argv)
     {
         // int fd = create_file("zzz.txt", O_CREAT | O_RDWR, 0664);
         int fd = create_tar(names, num_names);
-        if(fd < 0)
+        if (fd < 0)
         {
-            print_error("Error creating tar file");
+            print_error("Error creating tar file\n");
             return -1;
-        } 
-        
-        //printf("fd successful if 0: %d\n", fd);
-        // if (create_tar(names, num_names) == -1) //int v_flag
-        // {
-        //     return -1;
-        // }
+        }
+
+        // printf("fd successful if 0: %d\n", fd);
+        //  if (create_tar(names, num_names) == -1) //int v_flag
+        //  {
+        //      return -1;
+        //  }
 
         // TEST file_header_fns.c IN main:
         // tester_main(argv[2]);
@@ -155,8 +155,8 @@ int main(int argc, char **argv)
     }
     else if (my_strcmp(argv[1], "-tf") == 0)
     {
-        //t_flag = 1;
-        //f_flag = 1;
+        // t_flag = 1;
+        // f_flag = 1;
     }
     // else if(my_strcmp(argv[1], "-tvf")==0)
     //     {
@@ -166,12 +166,16 @@ int main(int argc, char **argv)
     //     }
     else if (my_strcmp(argv[1], "-uf") == 0)
     {
-        //u_flag = 1;
-        //f_flag = 1;
+        // u_flag = 1;
+        // f_flag = 1;
     }
     else if (my_strcmp(argv[1], "-xf") == 0)
     {
-        //extract_tar(names);
+        if(extract_tar(names, num_names))
+        {
+            print_error("Unable to extract tar file contents.\n"); 
+            return -1;
+        }
     }
     // else if(my_strcmp(argv[1], "-xvf")==0)
     //     {
@@ -186,8 +190,8 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    //my_printf("argc: %d\n", argc);
-   // my_printf("c: %d, f: %d, j: %d, r: %d, t: %d, u: %d, v: %d, x: %d, z: %d\n", c_flag, f_flag, j_flag, r_flag, t_flag, u_flag, v_flag, x_flag, z_flag);
+    // my_printf("argc: %d\n", argc);
+    // my_printf("c: %d, f: %d, j: %d, r: %d, t: %d, u: %d, v: %d, x: %d, z: %d\n", c_flag, f_flag, j_flag, r_flag, t_flag, u_flag, v_flag, x_flag, z_flag);
 
     //*** NEED TO IMPLEMENT num_flag_args ABOVE  */
 
@@ -207,12 +211,12 @@ int main(int argc, char **argv)
 
 void flag_error()
 {
-    print_error("tar: You must specify one of the '-Acdtrux', '--delete' or '--test-label' options\nTry 'tar --help' or 'tar --usage' for more information.");
+    print_error("tar: You must specify one of the '-Acdtrux', '--delete' or '--test-label' options\nTry 'tar --help' or 'tar --usage' for more information.\n");
 }
 
 void file_error(char *file_name)
 {
-    print_error("my_tar: %s: Cannot stat: No such file or directory", file_name);
+    print_error("my_tar: %s: Cannot stat: No such file or directory\n", file_name);
 }
 
 void failed_alloc()
@@ -227,7 +231,17 @@ void append_error()
 
 void tarball_error(char *tar_name)
 {
-    my_printf("my_tar: Cannot open %s\n", tar_name);
+    print_error("my_tar: Cannot open %s\n", tar_name);
+}
+
+void file_not_found_error(char * file_name)
+{
+    print_error("tar: %s: Not found in archive", file_name);
+}
+
+void previous_errors()
+{
+    print_error("tar: Exiting with failure status due to previous errors\n");
 }
 
 void print_string_array(char **all_names, int num_names)
@@ -280,7 +294,7 @@ char **create_names_array(int argc, char **argv, int num_names)
         names_index++;
     }
 
-    //print_string_array(names, names_index);
+    // print_string_array(names, names_index);
     return names;
 }
 // 346-416 commented for testing
@@ -288,7 +302,7 @@ char **create_names_array(int argc, char **argv, int num_names)
 int create_file(char *file_name, int flags, int perms)
 {
     int fd;
-    fd = open(file_name, flags, perms); // O_RDWR
+    fd = open(file_name, flags, perms);
     if (fd < 0)
     {
         tarball_error(file_name);
@@ -304,7 +318,7 @@ int create_tar_file(char *tar_name)
     // create tar file:
     tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
     // tar_fd = create_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
-    //printf("tar_fd: %d\n", tar_fd);
+    // printf("tar_fd: %d\n", tar_fd);
     if (tar_fd < 0)
     {
         tarball_error(tar_name);
@@ -318,7 +332,7 @@ int create_tar(char **names, int num_names) // int v_flag
     int tar_fd;
 
     char *tar_name = names[0];
-    //printf("tar_name: %s\n", tar_name);
+    // printf("tar_name: %s\n", tar_name);
     tar_fd = create_tar_file(tar_name);
 
     if (tar_fd < 0)
@@ -328,7 +342,7 @@ int create_tar(char **names, int num_names) // int v_flag
 
     for (int i = 1; i < num_names; i++)
     {
-        //printf("test\n");
+        // printf("test\n");
         if (process_entry(names[i], tar_fd) < 0)
         {
             my_printf("Error processing %s into tar file\n", names[i]);
@@ -346,7 +360,7 @@ int create_tar(char **names, int num_names) // int v_flag
     }
 
     long int tar_size = (long int)tar_stats.st_size;
-    //printf("tar_size before padding: %ld\n", tar_size);
+    // printf("tar_size before padding: %ld\n", tar_size);
 
     // need two zero blocks and then need to see if that goes over the size of a record
     int zero_padding = 2 * BLOCKSIZE;
@@ -366,7 +380,7 @@ int create_tar(char **names, int num_names) // int v_flag
         total_required_padding = rec_num_wpad * (RECORDSIZE * BLOCKSIZE) - tar_size;
     }
 
-    //printf("padding needed: %d\n", total_required_padding);
+    // printf("padding needed: %d\n", total_required_padding);
 
     if (write_padding(tar_fd, total_required_padding) < 0)
     {
@@ -375,7 +389,7 @@ int create_tar(char **names, int num_names) // int v_flag
     }
 
     tar_size = (long int)tar_stats.st_size;
-    //printf("tar_size after padding added: %ld\n", tar_size);
+    // printf("tar_size after padding added: %ld\n", tar_size);
 
     close(tar_fd);
 
@@ -389,10 +403,10 @@ int process_entry(char *path, int tar_fd)
     {
         file_error(path);
     }
-    //tester_main(path);
+    // tester_main(path);
     header *hdr = fill_header_info(path);
 
-    //printf("tar_fd: %d\n", tar_fd);
+    // printf("tar_fd: %d\n", tar_fd);
     if (!hdr)
     {
         file_error(path);
@@ -440,10 +454,10 @@ int process_entry(char *path, int tar_fd)
             rel_path[path_len] = '/';
             my_strncpy(rel_path + path_len + 1, entry->d_name, entry_name_len);
 
-            //printf("Full Path Name: %s\n", rel_path);
+            // printf("Full Path Name: %s\n", rel_path);
             if (process_entry(rel_path, tar_fd) < 0)
             {
-                print_error("Failure to process directory entries");
+                print_error("Failure to process directory entries\n");
                 closedir(dir);
                 return -1;
             }
@@ -460,13 +474,12 @@ int process_entry(char *path, int tar_fd)
     return 0;
 }
 
-
 int extract_tar(char **names, int num_names) // int v_flag
 {
     int tar_fd;
 
     char *tar_name = names[0];
-    //printf("tar_name: %s\n", tar_name);
+    // printf("tar_name: %s\n", tar_name);
     tar_fd = open(tar_name, O_RDONLY, TAR_PERMS);
 
     if (tar_fd < 0)
@@ -475,25 +488,39 @@ int extract_tar(char **names, int num_names) // int v_flag
         return -1;
     }
 
-    if(num_names > 1)
+    if (num_names > 1)
     {
-    for (int i = 1; i < num_names; i++)
-    {
-        if (extract_file(names[i], tar_fd) < 0)
+        for (int i = 1; i < num_names; i++)
         {
-            my_printf("Error processing %s into tar file\n", names[i]);
-            return 1;
+            //names + 1: truncates list to only have names of desired files and directories for extraction
+            //num_names - 1: number of names of desired files and directories for extraction
+            if (extract_all_contents(tar_fd, names + 1, num_names - 1) < 0)
+            {
+                print_error("Error processing %s into tar file\n", names[i]);
+                return 1;
+            }
         }
     }
-    }
-else{
-    extract_all_contents(tar_fd);
+    else
+    {
+        if(extract_all_contents(tar_fd, NULL, 0) < 0)
+        {
+            print_error("Error processing extracting contents from tar file.\n");
+        }
     }
 
     close(tar_fd);
 
     return 0;
 }
+
+
+
+
+
+
+
+
 
 /*
 For Special Files and Links:
@@ -516,64 +543,97 @@ mapping to struct stat:
 For device files, st_rdev is set using devmajor and devminor
 */
 
-int extract_all_contents(int tar_fd)
+int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
 {
-   struct stat tar_stats;
-   if(fstat(tar_fd, &tar_stats) == -1)
-   {
-        print_error("Unable to stat tar");
+    struct stat tar_stats;
+    if (fstat(tar_fd, &tar_stats) == -1)
+    {
+        print_error("Unable to stat tar\n");
         return -1;
-   } 
+    }
 
-   long int tar_size = (long int)tar_stats.st_size;
-   int total_blocks = tar_size / BLOCKSIZE;
-   if(tar_size / BLOCKSIZE != 0)
-   {
-        print_error("Error non-uniform tar size");
+    long int tar_size = (long int)tar_stats.st_size;
+    int total_blocks = tar_size / BLOCKSIZE;
+    if (tar_size / BLOCKSIZE != 0)
+    {
+        print_error("Error non-uniform tar size\n");
         return -1;
-   }
-   
+    }
+
     int current_block = 0;
-    
-    //makes sure tar_fd is at beginning of the file
-   lseek(tar_fd, 0, SEEK_SET);
+
+    // makes sure tar_fd is at beginning of the file
+    lseek(tar_fd, 0, SEEK_SET);
 
     unsigned char header_block[512];
-  
-    {
-    while(current_block < total_blocks)
-    {
-    int n = 0;
-    int returned_blocks = 0;
-    
-    if(n = read(tar_fd, header_block, 512) < 0 && n != 512)
-    {
-        print_error("Unable to read magic tar file");
-        return -1;
-    }
-    current_block++; 
+    my_memset(header_block, 0, sizeof(header_block));
 
-    struct header *f_header = (struct header *)header_block;
-
-    //check if file header is for file or dir
-
-    //if(my_strcmp(f_header->magic, TMAGIC) == 0)
-    if(my_strcmp(f_header->magic, "ustar") == 0)
     {
-        //do I need written_blocks?
-        if(returned_blocks = extract_process_entry(f_header, tar_fd, current_block) < 0)
+        while (current_block < total_blocks)
         {
-            print_error("Error... unable to extract file from tar");
-            return -1;
-        }
-        current_block = returned_blocks; 
-    } 
-    }
-}
+            int n = 0;
+            int returned_blocks = 0;
+            
+            //set block to current location ???
+            //lseek(tar_fd, current_block * 512, SEEK_SET);
 
-return 0;
+            if (n = read(tar_fd, header_block, 512) < 0 && n != 512)
+            {
+                print_error("Unable to read magic tar file\n");
+                return -1;
+            }
+            current_block++;
+
+            struct header *f_header = (struct header *)header_block;
+
+            // check if file header is for file or dir
+            // if(my_strcmp(f_header->magic, TMAGIC) == 0)
+
+            //if (my_strcmp(f_header->magic, "ustar") == 0 && (names_to_extract == NULL || (name_match)
+           //loop fn to test name
+           /*
+            -- thing is I need to make sure that with name match that I hit all the files
+
+                name_match(f_header->name, names_to_extract, num_ex_names)
+                {
+                for(int i = 0; i < num_ex_names; i++)
+                {
+                    if(my_strcmp(f_header->name, names_to_extract[i]) == 0)
+                    {
+                 if (returned_blocks = extract_process_entry(f_header, tar_fd, current_block) < 0)
+                {
+                    print_error("Error... unable to extract file from tar\n");
+                    return -1;
+                }        
+                    }
+
+                    //????????how to best mark that a file has been written... is there a more elegant way
+                    than using an array or doing n2 through the tar... n2 through tar could be terribly slow
+                }
+                }
+           
+           
+                //file_not_found_error() >>> needs to display file name when not found in tar
+                
+                //previous_errors(); >>> on bottom of the stack of file_not_found_error()'s
+                
+                
+                */
+            if (my_strcmp(f_header->magic, "ustar") == 0 && (names_to_extract == NULL))
+            {
+                // do I need written_blocks?
+                if (returned_blocks = extract_process_entry(f_header, tar_fd, current_block) < 0)
+                {
+                    print_error("Error... unable to extract file from tar\n");
+                    return -1;
+                }
+                current_block = returned_blocks;
+            }
+        }
+    }
+
+    return 0;
 }
-   
 
 int extract_process_entry(header *f_header, int tar_fd, int current_block)
 {
@@ -581,160 +641,149 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
     char file_flags = O_RDWR | O_CREAT | O_TRUNC;
     int file_perms = (int)parse_octal(f_header->mode, sizeof(f_header->mode));
     char file_type = f_header->typeflag;
-    long int file_size = (long int)parse_octal(f_header->size, 12);
+    long int file_size = (long int)parse_octal(f_header->size, sizeof(f_header->size));
 
-    //if reg file or symbolic link 0, 2  // need to check how this covers symbolic links
-    if(file_type == '0' || file_type == '2')
+    // if reg file or symbolic link 0, 2  // need to check how this covers symbolic links
+    if (file_type == '0' || file_type == '2')
     {
-    int fd = create_file(file_name, file_flags, file_perms);
-        if(fd < 0)
-    {
-        my_printf("Unable to create %s", file_name);
-        return -1;
-    }   
-
-    long int num = 0;
-    int num_blocks = 0;
-
-    //may need to create a fill_file fn to write stat data as 
-        if(num = write_file_data(tar_fd, fd, file_size) < 0 && num != file_size)
-    {
-        print_error("Unable to extract file contents");
-        return -1;
-    }
-
-    if(map_file_metadata(f_header, fd) < 0)
-    {
-        print_error("unable to map header data to file stat");
-        return -1;
-    }    
-
-
-   num_blocks = num % BLOCKSIZE != 0 ? num / BLOCKSIZE + 1 : num / BLOCKSIZE; 
-
-    current_block += num_blocks;
-    close(fd);    
-}
-
-    //if directory
-    else if(file_type == '5')
-    {
-        //need to put in the correct permission bits mode
-        /*
-        so I need to set the permissions from the file header thus
-        maybe a switch related to each of the modes... is S_IRWXU in 
-        octal?
-
-        
-        */
-        int dir_fd = mkdir(file_name, S_IRWXU);
-        if(dir_fd < 0)
+        int fd = create_file(file_name, file_flags, file_perms);
+        if (fd < 0)
         {
-            print_error("mkdir failed");
+            my_printf("Unable to create %s", file_name);
             return -1;
         }
-    
-        if(map_file_metadata(f_header, dir_fd) < 0)
-    {
-        print_error("unable to map header data to file stat");
-        return -1;
+
+        long int num = 0;
+        int num_blocks = 0;
+
+        // may need to create a fill_file fn to write stat data as
+        if (num = write_file_data(fd, tar_fd, file_size) < 0 && num != file_size)
+        {
+            print_error("Unable to extract file contents\n");
+            return -1;
+        }
+
+        if (map_file_metadata(f_header, fd) < 0)
+        {
+            print_error("unable to map header data to file stat\n");
+            return -1;
+        }
+
+        num_blocks = num % BLOCKSIZE != 0 ? num / BLOCKSIZE + 1 : num / BLOCKSIZE;
+
+        current_block += num_blocks;
+        close(fd);
     }
-    
+
+    // if directory
+    else if (file_type == '5')
+    {
+        {
+            print_error("Unable to set mode\n");
+            return -1;
+        }
+
+        mode_t dir_mode = (mode_t)parse_octal(f_header->mode, sizeof(f_header->mode));
+
+        int dir_fd = mkdir(file_name, dir_mode);
+        if (dir_fd < 0)
+        {
+            print_error("mkdir failed\n");
+            return -1;
+        }
+
+        if (map_file_metadata(f_header, dir_fd) < 0)
+        {
+            print_error("unable to map header data to file stat\n");
+            return -1;
+        }
     }
 
     return current_block;
 }
 
-
-int map_file_metadata(header * f_header, int fd)
+int map_file_metadata(header *f_header, int fd)
 {
     struct stat file_stats;
-    if(fstat(fd, &file_stats) == -1)
+    if (fstat(fd, &file_stats) == -1)
     {
         return -1;
     }
 
     //** need to make sure mode has the compressed permissions and file type */
-    switch(f_header->typeflag)
+    switch (f_header->typeflag)
     {
-    case '0': 
-    if(file_stats.st_mode = (mode_t) 0100000 & parse_octal(f_header->mode, 8) == 0)
-    {
-        print_error("Unable to set mode");
-        return -1;
-    }
-    break;
+    case '0':
+        if (file_stats.st_mode = (mode_t)0100000 & parse_octal(f_header->mode, sizeof(f_header->mode)) == 0)
+        {
+            print_error("Unable to set mode\n");
+            return -1;
+        }
+        break;
 
-    case '2': 
-    if(file_stats.st_mode = (mode_t) 0120000 & parse_octal(f_header->mode, 8) == 0);
-    {
-        print_error("Unable to set mode");
-        return -1;
-    }
-    break;
+    case '2':
+        if (file_stats.st_mode = (mode_t)0120000 & parse_octal(f_header->mode, sizeof(f_header->mode)) == 0)
+            ;
+        {
+            print_error("Unable to set mode\n");
+            return -1;
+        }
+        break;
 
     default:
-    file_stats.st_mode = 0;
-    print_error("Unable to set mode");
-    break;
+        //file_stats.st_mode = '\0';
+        print_error("Unable to set mode\n");
+        break;
     }
 
-    ///...if others needed get from fill_typeflag 
-    
+    ///...if others needed get from fill_typeflag
 
-
-    file_stats.st_uid = (unsigned int)parse_octal(f_header->uid, 8);
+    file_stats.st_uid = (unsigned int)parse_octal(f_header->uid, sizeof(f_header->uid));
     {
-        print_error("Unable to set uid");
+        print_error("Unable to set uid]\n");
         return -1;
     }
-    file_stats.st_gid = (unsigned int)parse_octal(f_header->gid, 8);
+    file_stats.st_gid = (unsigned int)parse_octal(f_header->gid, sizeof(f_header->gid));
     {
-        print_error("Unable to set gid");
+        print_error("Unable to set gid\n");
         return -1;
     }
-    file_stats.st_size = lseek(fd, 0, SEEK_END); //could do parse_octal(f_header->size, 12);
+    file_stats.st_size = lseek(fd, 0, SEEK_END); // could do parse_octal(f_header->size, 12);
     {
-        print_error("Unable to set size");
+        print_error("Unable to set size\n");
         return -1;
     }
-    file_stats.st_mtime = parse_octal(f_header->mtime, 12);
+    file_stats.st_mtime = parse_octal(f_header->mtime, sizeof(f_header->mtime));
     {
-        print_error("Unable to set mtime");
+        print_error("Unable to set mtime\n");
         return -1;
     }
 
-//need to look for fill_devmajor and fill_devminor if need to fill st_dev and st_rdev for block and char device 
-
+    // need to look for fill_devmajor and fill_devminor if need to fill st_dev and st_rdev for block and char device
 
     /* REMEMBER OCT STRING TO INT
    st_mode    chmod()   → Derived from the tar header’s mode and typeflag
 st_uid and st_gid    chown()   → Derived from the header’s uid and gid
 st_size → Tells you how many bytes of file data to read
-st_mtime    utime()    futime()   → Derived from the header’s mtime 
+st_mtime    utime()    futime()   → Derived from the header’s mtime
 
 map_file_data(f_header, fd)
 */
-return 0;
+    return 0;
 }
 
-
-
-size_t parse_octal(char * str, size_t max_len)
+size_t parse_octal(char *str, size_t max_len)
 {
     size_t num = 0;
     size_t i = 0;
-    for(i = 0; i < max_len && str[i] >= '0' && str[i] <= '7'; ++i)
+    for (i = 0; i < max_len && str[i] >= '0' && str[i] <= '7'; ++i)
     {
-        num*= 8;
+        num *= 8;
         num += str[i] - '0';
     }
 
     return num;
 }
-
-
-
 
 // int extract_process_entry(char *path, int tar_fd)
 // {
@@ -742,7 +791,7 @@ size_t parse_octal(char * str, size_t max_len)
 //     //name matches path, file or dir... if file extract_file(), if directory create dir
 //     //move into and then create file
 
-//     //if path create file with the name and copy into 
+//     //if path create file with the name and copy into
 //     //file
 
 //     write_header(hdr, tar_fd);
@@ -807,32 +856,6 @@ size_t parse_octal(char * str, size_t max_len)
 //     return 0;
 // }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 int write_padding(int tar_fd, int total_required_padding)
 {
     char zero_buff[total_required_padding];
@@ -841,9 +864,9 @@ int write_padding(int tar_fd, int total_required_padding)
     ssize_t bytes_written = 0;
 
     int end_data = lseek(tar_fd, 0, SEEK_END);
-    if(end_data < 0)
+    if (end_data < 0)
     {
-        print_error("Unable to random access tar file");
+        print_error("Unable to random access tar file\n");
         return -1;
     }
     // printf("End data: %d\n", end_data);
@@ -865,8 +888,8 @@ int write_padding(int tar_fd, int total_required_padding)
 
 int append_file_data(int tar_fd, char *append_file)
 {
-    //printf("append_file_data named %s started!!!!!!\n", append_file);
-    // get file size
+    // printf("append_file_data named %s started!!!!!!\n", append_file);
+    //  get file size
     struct stat file_stats;
 
     // what to do about symbolic links lsat and in tar??
@@ -876,7 +899,7 @@ int append_file_data(int tar_fd, char *append_file)
     }
 
     long int f_size = (long int)file_stats.st_size;
-    //printf("f_size in append: %ld\n", f_size);
+    // printf("f_size in append: %ld\n", f_size);
 
     // get tar size
     struct stat tar_stats;
@@ -887,7 +910,7 @@ int append_file_data(int tar_fd, char *append_file)
     }
 
     long int tar_size = (long int)tar_stats.st_size;
-    //printf("tar_size in append: %ld\n", tar_size);
+    // printf("tar_size in append: %ld\n", tar_size);
 
     int append_fd = open(append_file, O_RDONLY);
 
@@ -912,7 +935,7 @@ int append_file_data(int tar_fd, char *append_file)
     }
 
     close(append_fd);
-   // printf("closed append_fd\n");
+    // printf("closed append_fd\n");
     return 0; // if successful may need conditional logic
 }
 
@@ -927,19 +950,19 @@ int write_header(header *hdr, int tar_fd)
         ssize_t written = write(tar_fd, hdr_data + bytes_written, BLOCKSIZE);
         if (written < 0)
         {
-            print_error("write_header: write failed");
+            print_error("write_header: write failed\n");
             return -1;
         }
         bytes_written += written;
     }
-    //printf("bytes_written: %ld\n", bytes_written);
-    //printf("header written\n");
+    // printf("bytes_written: %ld\n", bytes_written);
+    // printf("header written\n");
     return 0;
 }
 
 int write_file_data(int dst_fd, int src_fd, int f_size)
 {
-   // printf("write_file_data starting...\n");
+    // printf("write_file_data starting...\n");
     unsigned char transfer_buff[BLOCKSIZE];
     ssize_t total_bytes_written = 0;
     ssize_t n = 0;
@@ -954,7 +977,7 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
             ssize_t written = write(dst_fd, transfer_buff + bytes_written, n - bytes_written);
             if (written < 0)
             {
-                print_error("Failure to write file data");
+                print_error("Failure to write file data\n");
                 return -1;
             }
             bytes_written += written;
@@ -964,11 +987,11 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
 
     if (n < 0)
     {
-        print_error("read error");
+        print_error("read error\n");
         return -1;
     }
     // need to write additional bytes to fill data block
-    //printf("bytes_written: %ld\n", total_bytes_written);
+    // printf("bytes_written: %ld\n", total_bytes_written);
 
     ssize_t additional_size;
     int add_written;
@@ -978,36 +1001,34 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
         additional_size = BLOCKSIZE - total_bytes_written % BLOCKSIZE;
     }
 
-    if(additional_size > 0)
-{
-    unsigned char add_buff[additional_size];
-    my_memset(add_buff, '\0', additional_size);
-
-    add_written = write(dst_fd, add_buff, additional_size);
-
-    if (add_written != additional_size)
+    if (additional_size > 0)
     {
-        print_error("Failure to write file data intrablock padding");
-        return -1;
+        unsigned char add_buff[additional_size];
+        my_memset(add_buff, '\0', additional_size);
+
+        add_written = write(dst_fd, add_buff, additional_size);
+
+        if (add_written != additional_size)
+        {
+            print_error("Failure to write file data intrablock padding\n");
+            return -1;
+        }
     }
- 
-}
-   
-    //printf("additional bytes_written: %d\n", add_written);
-   // printf("GRAND TOTAL FOR FILE bytes_written: %ld\n", total_bytes_written + add_written);
 
+    // printf("additional bytes_written: %d\n", add_written);
+    // printf("GRAND TOTAL FOR FILE bytes_written: %ld\n", total_bytes_written + add_written);
 
-// struct stat tar_stats;
+    // struct stat tar_stats;
 
-// if (fstat(tar_fd, &tar_stats) == -1)
-// {
-//     return -1;
-// }
+    // if (fstat(tar_fd, &tar_stats) == -1)
+    // {
+    //     return -1;
+    // }
 
-// long int tar_size = (long int)tar_stats.st_size;
-// printf("tar_size in write_file_data: %ld\n", tar_size);
+    // long int tar_size = (long int)tar_stats.st_size;
+    // printf("tar_size in write_file_data: %ld\n", tar_size);
 
-return 0;
+    return 0;
 }
 
 //        //check if is file vs dir
