@@ -569,7 +569,7 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
             // set block to current location ???
             // lseek(tar_fd, current_block * 512, SEEK_SET);
 
-            if (n = read(tar_fd, header_block, 512) < 0 && n != 512)
+            if ((n = read(tar_fd, header_block, 512) < 0) && n != 512)
             {
                 print_error("Unable to read magic tar file\n");
                 return -1;
@@ -619,7 +619,7 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
                         }
 
                         file_not_found_error(names_to_extract[i]);
-                        int error_flag = 1;
+                        error_flag = 1;
                     }
                     if (error_flag == 1)
                     {
@@ -635,8 +635,9 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
 
 int extract_process_entry(header *f_header, int tar_fd, int current_block)
 {
-    char file_name[NAMESIZE] = f_header->name;
-    char file_flags = O_RDWR | O_CREAT | O_TRUNC;
+    char file_name[NAMESIZE];
+    my_strncpy(file_name, f_header->name, NAMESIZE); 
+    int file_flags = O_RDWR | O_CREAT | O_TRUNC;
     int file_perms = (int)parse_octal(f_header->mode, sizeof(f_header->mode));
     char file_type = f_header->typeflag;
     long int file_size = (long int)parse_octal(f_header->size, sizeof(f_header->size));
@@ -655,7 +656,7 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
         int num_blocks = 0;
 
         // may need to create a fill_file fn to write stat data as
-        if (num = write_file_data(fd, tar_fd, file_size) < 0 && num != file_size)
+        if ((num = write_file_data(fd, tar_fd, file_size) < 0) && num != file_size)
         {
             print_error("Unable to extract file contents\n");
             return -1;
@@ -712,7 +713,7 @@ int map_file_metadata(header *f_header, int fd)
     switch (f_header->typeflag)
     {
     case '0':
-        if (file_stats.st_mode = (mode_t)0100000 & parse_octal(f_header->mode, sizeof(f_header->mode)) == 0)
+        if ((file_stats.st_mode = (mode_t)0100000 & parse_octal(f_header->mode, sizeof(f_header->mode))) == 0)
         {
             print_error("Unable to set mode\n");
             return -1;
@@ -720,8 +721,7 @@ int map_file_metadata(header *f_header, int fd)
         break;
 
     case '2':
-        if (file_stats.st_mode = (mode_t)0120000 & parse_octal(f_header->mode, sizeof(f_header->mode)) == 0)
-            ;
+        if ((file_stats.st_mode = (mode_t)0120000 & parse_octal(f_header->mode, sizeof(f_header->mode))) == 0)
         {
             print_error("Unable to set mode\n");
             return -1;
