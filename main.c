@@ -171,9 +171,9 @@ int main(int argc, char **argv)
     }
     else if (my_strcmp(argv[1], "-xf") == 0)
     {
-        if(extract_tar(names, num_names))
+        if (extract_tar(names, num_names))
         {
-            print_error("Unable to extract tar file contents.\n"); 
+            print_error("Unable to extract tar file contents.\n");
             return -1;
         }
     }
@@ -234,7 +234,7 @@ void tarball_error(char *tar_name)
     print_error("my_tar: Cannot open %s\n", tar_name);
 }
 
-void file_not_found_error(char * file_name)
+void file_not_found_error(char *file_name)
 {
     print_error("tar: %s: Not found in archive", file_name);
 }
@@ -492,8 +492,8 @@ int extract_tar(char **names, int num_names) // int v_flag
     {
         for (int i = 1; i < num_names; i++)
         {
-            //names + 1: truncates list to only have names of desired files and directories for extraction
-            //num_names - 1: number of names of desired files and directories for extraction
+            // names + 1: truncates list to only have names of desired files and directories for extraction
+            // num_names - 1: number of names of desired files and directories for extraction
             if (extract_all_contents(tar_fd, names + 1, num_names - 1) < 0)
             {
                 print_error("Error processing %s into tar file\n", names[i]);
@@ -503,7 +503,7 @@ int extract_tar(char **names, int num_names) // int v_flag
     }
     else
     {
-        if(extract_all_contents(tar_fd, NULL, 0) < 0)
+        if (extract_all_contents(tar_fd, NULL, 0) < 0)
         {
             print_error("Error processing extracting contents from tar file.\n");
         }
@@ -513,14 +513,6 @@ int extract_tar(char **names, int num_names) // int v_flag
 
     return 0;
 }
-
-
-
-
-
-
-
-
 
 /*
 For Special Files and Links:
@@ -573,9 +565,9 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
         {
             int n = 0;
             int returned_blocks = 0;
-            
-            //set block to current location ???
-            //lseek(tar_fd, current_block * 512, SEEK_SET);
+
+            // set block to current location ???
+            // lseek(tar_fd, current_block * 512, SEEK_SET);
 
             if (n = read(tar_fd, header_block, 512) < 0 && n != 512)
             {
@@ -586,48 +578,54 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
 
             struct header *f_header = (struct header *)header_block;
 
-            // check if file header is for file or dir
-            // if(my_strcmp(f_header->magic, TMAGIC) == 0)
-
-            //if (my_strcmp(f_header->magic, "ustar") == 0 && (names_to_extract == NULL || (name_match)
-           //loop fn to test name
-           /*
-            -- thing is I need to make sure that with name match that I hit all the files
-
-                name_match(f_header->name, names_to_extract, num_ex_names)
-                {
-                for(int i = 0; i < num_ex_names; i++)
-                {
-                    if(my_strcmp(f_header->name, names_to_extract[i]) == 0)
-                    {
-                 if (returned_blocks = extract_process_entry(f_header, tar_fd, current_block) < 0)
-                {
-                    print_error("Error... unable to extract file from tar\n");
-                    return -1;
-                }        
-                    }
-
-                    //????????how to best mark that a file has been written... is there a more elegant way
-                    than using an array or doing n2 through the tar... n2 through tar could be terribly slow
-                }
-                }
-           
-           
-                //file_not_found_error() >>> needs to display file name when not found in tar
-                
-                //previous_errors(); >>> on bottom of the stack of file_not_found_error()'s
-                
-                
-                */
+            // Extracting the entire tar file
             if (my_strcmp(f_header->magic, "ustar") == 0 && (names_to_extract == NULL))
             {
                 // do I need written_blocks?
-                if (returned_blocks = extract_process_entry(f_header, tar_fd, current_block) < 0)
+                if ((returned_blocks = extract_process_entry(f_header, tar_fd, current_block)) < 0)
                 {
                     print_error("Error... unable to extract file from tar\n");
                     return -1;
                 }
                 current_block = returned_blocks;
+            }
+
+            // Extracting specific file names
+            if (my_strcmp(f_header->magic, "ustar") == 0 && (names_to_extract != NULL))
+            {
+                {
+                    for (int i = 0; i < num_ex_names; i++)
+                    {
+                        if (my_strcmp(f_header->name, names_to_extract[i]) == 0)
+                        {
+                            if ((returned_blocks = extract_process_entry(f_header, tar_fd, current_block)) < 0)
+                            {
+                                print_error("Error... unable to extract file from tar\n");
+                                return -1;
+                            }
+                            names_to_extract[i] = 0;
+
+                            current_block = returned_blocks;
+                        }
+                    }
+
+                    // prints errors for those file names not found
+                    int error_flag = 0;
+                    for (int i = 0; i < num_ex_names; i++)
+                    {
+                        if (names_to_extract[i] == 0)
+                        {
+                            continue;
+                        }
+
+                        file_not_found_error(names_to_extract[i]);
+                        int error_flag = 1;
+                    }
+                    if (error_flag == 1)
+                    {
+                        previous_errors();
+                    }
+                }
             }
         }
     }
@@ -731,7 +729,7 @@ int map_file_metadata(header *f_header, int fd)
         break;
 
     default:
-        //file_stats.st_mode = '\0';
+        // file_stats.st_mode = '\0';
         print_error("Unable to set mode\n");
         break;
     }
