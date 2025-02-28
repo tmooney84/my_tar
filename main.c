@@ -75,7 +75,7 @@ char **create_names_array(int argc, char **argv, int num_names);
 
 int create_file(char *file_name, int flags, int perms);
 int create_tar(char **names, int num_names); // int v_flag
-int create_tar_file(char *tar_name);
+int create_tar_file(char *tar_name, char op_flag);
 int append_file_data(int tar_fd, char *append_file);
 int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
@@ -311,14 +311,28 @@ int create_file(char *file_name, int flags, int perms)
     return fd;
 }
 
-int create_tar_file(char *tar_name)
+int create_tar_file(char *tar_name, char op_flag)
 {
     int tar_fd;
 
     // create tar file:
+    if(op_flag == 'c')
+    {
+    tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_TRUNC, TAR_PERMS);
+    }
+    
+    else if(op_flag == 'r' || op_flag == 'u')
+    {
     tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
+    }
     // tar_fd = create_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
     // printf("tar_fd: %d\n", tar_fd);
+
+    else
+    {
+        tarball_error(tar_name);
+    } 
+    
     if (tar_fd < 0)
     {
         tarball_error(tar_name);
@@ -333,7 +347,7 @@ int create_tar(char **names, int num_names) // int v_flag
 
     char *tar_name = names[0];
     // printf("tar_name: %s\n", tar_name);
-    tar_fd = create_tar_file(tar_name);
+    tar_fd = create_tar_file(tar_name, 'c');
 
     if (tar_fd < 0)
     {
@@ -454,7 +468,7 @@ int process_entry(char *path, int tar_fd)
             rel_path[path_len] = '/';
             my_strncpy(rel_path + path_len + 1, entry->d_name, entry_name_len);
 
-            // printf("Full Path Name: %s\n", rel_path);
+            // printf("Relative Path Name: %s\n", rel_path);
             if (process_entry(rel_path, tar_fd) < 0)
             {
                 print_error("Failure to process directory entries\n");

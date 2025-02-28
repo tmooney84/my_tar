@@ -122,13 +122,13 @@ header *fill_header_info(char *file)
     //     MEMORY_ALLOCATION_ERROR,
     //     // ... more error codes
     // };
-    fill_name(file, file_header);
     fill_mode(file, file_stats, file_header);
     fill_uid(file, file_stats, file_header);
     fill_gid(file, file_stats, file_header);
     fill_size(file, file_stats, file_header);
     fill_mtime(file, file_stats, file_header);
     fill_typeflag(file, file_stats, file_header);
+    fill_name(file, file_header);
     fill_linkname(file, file_stats, file_header);
     fill_uname(file, file_stats, file_header);
     fill_gname(file, file_stats, file_header);
@@ -203,14 +203,24 @@ int fill_name(char *file, header *file_header)
     // }
 
     // printf("absolute path: %s", absolute_path);
+    char file_name[NAMESIZE];
+    my_strncpy(file_name, file, NAMESIZE);
     int path_size = my_strlen(file);
+    
+    if(file_header->typeflag == '5' && path_size < NAMESIZE-2)
+    {
+        file_name[path_size] = '/';
+        file_name[path_size + 1] = '\0';
+    }
+
+    path_size = my_strlen(file_name);
     int last_slash_point = -1;
 
     // due to my_strncpy placing a '\0' at the end of the string so
     // 99 characters can be the max
     if (path_size < NAMESIZE)
     {
-        my_strncpy(file_header->name, file, path_size);
+        my_strncpy(file_header->name, file_name, path_size);
         file_header->name[path_size] = '\0';
         // memset(file_header->prefix, 0, sizeof(file_header->prefix)); // Clear prefix
         return 0;
@@ -219,7 +229,7 @@ int fill_name(char *file, header *file_header)
     {
         for (int i = 0; i < path_size; i++)
         {
-            if (file[i] == '/')
+            if (file_name[i] == '/')
             {
                 last_slash_point = i;
             }
@@ -231,11 +241,11 @@ int fill_name(char *file, header *file_header)
         print_error("Relative Path too large for TAR format");
         return -1;
     }
-    my_strncpy(file_header->prefix, file, last_slash_point);
+    my_strncpy(file_header->prefix, file_name, last_slash_point);
     file_header->prefix[last_slash_point] = '\0';
 
     // Copy the filename portion into name (up to 100 bytes)
-    my_strncpy(file_header->name, file + last_slash_point + 1, NAMESIZE - 1);
+    my_strncpy(file_header->name, file_name + last_slash_point + 1, NAMESIZE - 1);
     file_header->name[NAMESIZE - 1] = '\0';
 
     return 0;
