@@ -1,8 +1,11 @@
 # Compiler
 CC = gcc
 
-# Compiler flags
-CFLAGS = -Wall -Wextra -Werror #-std=c99
+# Compiler flags (without debug info)
+# CFLAGS = -Wall -Wextra -Werror -g #-std=c99
+
+# Compiler flags (with debug info)
+CFLAGS = -Wall -Wextra -Werror -g #-std=c99
 
 # Target executable name
 TARGET = my_tar

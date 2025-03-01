@@ -560,7 +560,7 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
 
     long int tar_size = (long int)tar_stats.st_size;
     int total_blocks = tar_size / BLOCKSIZE;
-    if (tar_size / BLOCKSIZE != 0)
+    if (tar_size % BLOCKSIZE != 0)
     {
         print_error("Error non-uniform tar size\n");
         return -1;
@@ -574,7 +574,6 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
     unsigned char header_block[512];
     my_memset(header_block, 0, sizeof(header_block));
 
-    {
         while (current_block < total_blocks)
         {
             int n = 0;
@@ -593,7 +592,12 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
             struct header *f_header = (struct header *)header_block;
 
             // Extracting the entire tar file
-            if (my_strcmp(f_header->magic, "ustar") == 0 && (names_to_extract == NULL))
+                if((f_header->magic[0] == 'u' &&
+                f_header->magic[1] == 's' &&
+                f_header->magic[2] == 't' &&
+                f_header->magic[3] == 'a' &&
+                f_header->magic[4] == 'r' &&
+                f_header->magic[5] == ' ') && (num_ex_names == 0))
             {
                 // do I need written_blocks?
                 if ((returned_blocks = extract_process_entry(f_header, tar_fd, current_block)) < 0)
@@ -605,12 +609,12 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
             }
 
             // Extracting specific file names
-            if (my_strcmp(f_header->magic, "ustar") == 0 && (names_to_extract != NULL))
+            if (my_strcmp(f_header->magic, "ustar") == 0 && (num_ex_names != 0))
             {
                 {
                     for (int i = 0; i < num_ex_names; i++)
                     {
-                        if (my_strcmp(f_header->name, names_to_extract[i]) == 0)
+                        if ((names_to_extract[i] != 0) && my_strcmp(f_header->name, names_to_extract[i]) == 0)
                         {
                             if ((returned_blocks = extract_process_entry(f_header, tar_fd, current_block)) < 0)
                             {
@@ -622,8 +626,11 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
                             current_block = returned_blocks;
                         }
                     }
+                }
+            }
+        }
 
-                    // prints errors for those file names not found
+     // prints errors for those file names from command that are not found
                     int error_flag = 0;
                     for (int i = 0; i < num_ex_names; i++)
                     {
@@ -639,10 +646,12 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
                     {
                         previous_errors();
                     }
-                }
-            }
-        }
-    }
+                    //!!! Temporary
+                    else
+                    {
+                        printf("No errors with prompted names");
+                    }
+                    //
 
     return 0;
 }

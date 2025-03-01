@@ -1,4 +1,19 @@
-To-Do Sunday 2/24/25
+To-Do Saturday 2/28/25
+
+
+**************Start at line 1020 and begin gdb in that area to 
+figure out the logic of what happens when % is equal to zero. I 
+think my logic is off there for        ./my_tar -xf test.tar
+
+
+
+
+
+
+
+
+
+
 
 ***!!!NEED TO CLOSE FILE DESCRIPTORS THROUGHOUT THE PROGRAM!!!
 
