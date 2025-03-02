@@ -316,14 +316,14 @@ int create_tar_file(char *tar_name, char op_flag)
     int tar_fd;
 
     // create tar file:
-    if(op_flag == 'c')
+    if (op_flag == 'c')
     {
-    tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_TRUNC, TAR_PERMS);
+        tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_TRUNC, TAR_PERMS);
     }
-    
-    else if(op_flag == 'r' || op_flag == 'u')
+
+    else if (op_flag == 'r' || op_flag == 'u')
     {
-    tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
+        tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
     }
     // tar_fd = create_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
     // printf("tar_fd: %d\n", tar_fd);
@@ -331,8 +331,8 @@ int create_tar_file(char *tar_name, char op_flag)
     else
     {
         tarball_error(tar_name);
-    } 
-    
+    }
+
     if (tar_fd < 0)
     {
         tarball_error(tar_name);
@@ -574,84 +574,85 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
     unsigned char header_block[512];
     my_memset(header_block, 0, sizeof(header_block));
 
-        while (current_block < total_blocks)
+    while (current_block < total_blocks)
+    {
+        int n = 0;
+        int returned_blocks = 0;
+
+        // set block to current location ???
+        // lseek(tar_fd, current_block * 512, SEEK_SET);
+
+        if ((n = read(tar_fd, header_block, 512) < 0) && n != 512)
         {
-            int n = 0;
-            int returned_blocks = 0;
+            print_error("Unable to read magic tar file\n");
+            return -1;
+        }
+        current_block++;
 
-            // set block to current location ???
-            // lseek(tar_fd, current_block * 512, SEEK_SET);
+        struct header *f_header = (struct header *)header_block;
 
-            if ((n = read(tar_fd, header_block, 512) < 0) && n != 512)
+        // Extracting the entire tar file
+        if ((f_header->magic[0] == 'u' &&
+             f_header->magic[1] == 's' &&
+             f_header->magic[2] == 't' &&
+             f_header->magic[3] == 'a' &&
+             f_header->magic[4] == 'r' &&
+             f_header->magic[5] == ' ') &&
+            (num_ex_names == 0))
+        {
+            // do I need written_blocks?
+            if ((returned_blocks = extract_process_entry(f_header, tar_fd, current_block)) < 0)
             {
-                print_error("Unable to read magic tar file\n");
+                print_error("Error... unable to extract file from tar\n");
                 return -1;
             }
-            current_block++;
+            current_block = returned_blocks;
+        }
 
-            struct header *f_header = (struct header *)header_block;
-
-            // Extracting the entire tar file
-                if((f_header->magic[0] == 'u' &&
-                f_header->magic[1] == 's' &&
-                f_header->magic[2] == 't' &&
-                f_header->magic[3] == 'a' &&
-                f_header->magic[4] == 'r' &&
-                f_header->magic[5] == ' ') && (num_ex_names == 0))
+        // Extracting specific file names
+        if (my_strcmp(f_header->magic, "ustar") == 0 && (num_ex_names != 0))
+        {
             {
-                // do I need written_blocks?
-                if ((returned_blocks = extract_process_entry(f_header, tar_fd, current_block)) < 0)
+                for (int i = 0; i < num_ex_names; i++)
                 {
-                    print_error("Error... unable to extract file from tar\n");
-                    return -1;
-                }
-                current_block = returned_blocks;
-            }
-
-            // Extracting specific file names
-            if (my_strcmp(f_header->magic, "ustar") == 0 && (num_ex_names != 0))
-            {
-                {
-                    for (int i = 0; i < num_ex_names; i++)
+                    if ((names_to_extract[i] != 0) && my_strcmp(f_header->name, names_to_extract[i]) == 0)
                     {
-                        if ((names_to_extract[i] != 0) && my_strcmp(f_header->name, names_to_extract[i]) == 0)
+                        if ((returned_blocks = extract_process_entry(f_header, tar_fd, current_block)) < 0)
                         {
-                            if ((returned_blocks = extract_process_entry(f_header, tar_fd, current_block)) < 0)
-                            {
-                                print_error("Error... unable to extract file from tar\n");
-                                return -1;
-                            }
-                            names_to_extract[i] = 0;
-
-                            current_block = returned_blocks;
+                            print_error("Error... unable to extract file from tar\n");
+                            return -1;
                         }
+                        names_to_extract[i] = 0;
+
+                        current_block = returned_blocks;
                     }
                 }
             }
         }
+    }
 
-     // prints errors for those file names from command that are not found
-                    int error_flag = 0;
-                    for (int i = 0; i < num_ex_names; i++)
-                    {
-                        if (names_to_extract[i] == 0)
-                        {
-                            continue;
-                        }
+    // prints errors for those file names from command that are not found
+    int error_flag = 0;
+    for (int i = 0; i < num_ex_names; i++)
+    {
+        if (names_to_extract[i] == 0)
+        {
+            continue;
+        }
 
-                        file_not_found_error(names_to_extract[i]);
-                        error_flag = 1;
-                    }
-                    if (error_flag == 1)
-                    {
-                        previous_errors();
-                    }
-                    //!!! Temporary
-                    else
-                    {
-                        printf("No errors with prompted names");
-                    }
-                    //
+        file_not_found_error(names_to_extract[i]);
+        error_flag = 1;
+    }
+    if (error_flag == 1)
+    {
+        previous_errors();
+    }
+    //!!! Temporary
+    else
+    {
+        printf("No errors with prompted names");
+    }
+    //
 
     return 0;
 }
@@ -659,7 +660,7 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
 int extract_process_entry(header *f_header, int tar_fd, int current_block)
 {
     char file_name[NAMESIZE];
-    my_strncpy(file_name, f_header->name, NAMESIZE); 
+    my_strncpy(file_name, f_header->name, NAMESIZE);
     int file_flags = O_RDWR | O_CREAT | O_TRUNC;
     int file_perms = (int)parse_octal(f_header->mode, sizeof(f_header->mode));
     char file_type = f_header->typeflag;
@@ -989,10 +990,34 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
     ssize_t n = 0;
     // This logic is for the partial writes in the events of system buffering and interrupts... more common in pipes,fifos and sockets
     // than regular files, but can possibly happen
-    while ((f_size <= 0 || total_bytes_written < f_size) &&
-           (n = read(src_fd, transfer_buff, BLOCKSIZE)) > 0)
+
+    while (1)
     {
+        ssize_t bytes_to_read = BLOCKSIZE;
+
+        // calculates read size
+        if (f_size > 0)
+        {
+            ssize_t remaining = f_size - total_bytes_written;
+            if (remaining <= 0)
+                break; // all data read
+            bytes_to_read = (remaining < BLOCKSIZE) ? remaining : BLOCKSIZE;
+        }
+
+        if ((n = read(src_fd, transfer_buff, BLOCKSIZE)) < 0)
+        {
+            print_error("read error\n");
+            return -1;
+        }
+
+        if (n == 0)
+        {
+            break; // EOF reached
+        }
+
+        // handles partial writes
         ssize_t bytes_written = 0;
+
         while (bytes_written < n)
         {
             ssize_t written = write(dst_fd, transfer_buff + bytes_written, n - bytes_written);
@@ -1004,53 +1029,62 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
             bytes_written += written;
         }
         total_bytes_written += n;
-    }
 
-    if (n < 0)
-    {
-        print_error("read error\n");
-        return -1;
-    }
-    // need to write additional bytes to fill data block
-    // printf("bytes_written: %ld\n", total_bytes_written);
+        // exit if exactly copied f_size bytes
+        if (f_size > 0 && total_bytes_written >= f_size)
+            break;
 
-    ssize_t additional_size;
-    int add_written;
-
-    if (total_bytes_written % BLOCKSIZE != 0)
-    {
-        additional_size = BLOCKSIZE - total_bytes_written % BLOCKSIZE;
-    }
-
-    if (additional_size > 0)
-    {
-        unsigned char add_buff[additional_size];
-        my_memset(add_buff, '\0', additional_size);
-
-        add_written = write(dst_fd, add_buff, additional_size);
-
-        if (add_written != additional_size)
+        //checks if enough data read
+        if (f_size > 0 && total_bytes_written < f_size)
         {
-            print_error("Failure to write file data intrablock padding\n");
+            print_error("Source file shorter than specified size");
             return -1;
         }
+
+        // calculates write block padding
+        // printf("bytes_written: %ld\n", total_bytes_written);
+
+        ssize_t additional_size = 0;
+
+        if (total_bytes_written % BLOCKSIZE != 0)
+        {
+            additional_size = BLOCKSIZE - (total_bytes_written % BLOCKSIZE);
+        }
+
+        if (additional_size > 0)
+        {
+            unsigned char add_buff[additional_size];
+            my_memset(add_buff, '\0', additional_size);
+
+            ssize_t add_written = 0;
+
+            while (add_written < additional_size)
+            {
+                ssize_t written = write(dst_fd, add_buff + add_written, additional_size - add_written);
+                if (written < 0)
+                {
+                    print_error("Failure to write padding\n");
+                    return -1;
+                }
+                add_written += written;
+            }
+        }
     }
-
-    // printf("additional bytes_written: %d\n", add_written);
-    // printf("GRAND TOTAL FOR FILE bytes_written: %ld\n", total_bytes_written + add_written);
-
-    // struct stat tar_stats;
-
-    // if (fstat(tar_fd, &tar_stats) == -1)
-    // {
-    //     return -1;
-    // }
-
-    // long int tar_size = (long int)tar_stats.st_size;
-    // printf("tar_size in write_file_data: %ld\n", tar_size);
-
     return 0;
 }
+// +11 lines are from debugging from write_file_data
+// printf("additional bytes_written: %d\n", add_written);
+// printf("GRAND TOTAL FOR FILE bytes_written: %ld\n", total_bytes_written + add_written);
+
+// struct stat tar_stats;
+
+// if (fstat(tar_fd, &tar_stats) == -1)
+// {
+//     return -1;
+// }
+
+// long int tar_size = (long int)tar_stats.st_size;
+// printf("tar_size in write_file_data: %ld\n", tar_size);
 
 //        //check if is file vs dir
 //        file_header_info(names[i]);
