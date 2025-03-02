@@ -1004,7 +1004,7 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
             bytes_to_read = (remaining < BLOCKSIZE) ? remaining : BLOCKSIZE;
         }
 
-        if ((n = read(src_fd, transfer_buff, BLOCKSIZE)) < 0)
+        if ((n = read(src_fd, transfer_buff, bytes_to_read)) < 0)
         {
             print_error("read error\n");
             return -1;
