@@ -1031,8 +1031,8 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
         total_bytes_written += n;
 
         // exit if exactly copied f_size bytes
-        if (f_size > 0 && total_bytes_written >= f_size)
-            break;
+        // if (f_size > 0 && total_bytes_written >= f_size)
+        //     break;
 
         //checks if enough data read
         if (f_size > 0 && total_bytes_written < f_size)
