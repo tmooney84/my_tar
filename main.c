@@ -41,6 +41,7 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #include <pwd.h>
 #include <grp.h>
 #include <utime.h>
+#include <time.h>
 
 #include "utils.h"
 #include "my_printf.h"
@@ -650,7 +651,7 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
     //!!! Temporary
     else
     {
-        printf("No errors with prompted names");
+        printf("No errors with prompted names\n");
     }
     //
 
@@ -678,9 +679,9 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
 
         long int num = 0;
         int num_blocks = 0;
-
-        // may need to create a fill_file fn to write stat data as
-        if ((num = write_file_data(fd, tar_fd, file_size) < 0) && num != file_size)
+        
+        num = write_file_data(fd, tar_fd, file_size);
+        if ((num < 0) && num != file_size)
         {
             print_error("Unable to extract file contents\n");
             return -1;
@@ -737,19 +738,11 @@ int map_file_metadata(header *f_header, int fd)
     switch (f_header->typeflag)
     {
     case '0':
-        if ((file_stats.st_mode = (mode_t)0100000 & parse_octal(f_header->mode, sizeof(f_header->mode))) == 0)
-        {
-            print_error("Unable to set mode\n");
-            return -1;
-        }
+        file_stats.st_mode = (mode_t)0100000 & parse_octal(f_header->mode, sizeof(f_header->mode));
         break;
 
     case '2':
-        if ((file_stats.st_mode = (mode_t)0120000 & parse_octal(f_header->mode, sizeof(f_header->mode))) == 0)
-        {
-            print_error("Unable to set mode\n");
-            return -1;
-        }
+        file_stats.st_mode = (mode_t)0120000 & parse_octal(f_header->mode, sizeof(f_header->mode));
         break;
 
     default:
@@ -761,27 +754,9 @@ int map_file_metadata(header *f_header, int fd)
     ///...if others needed get from fill_typeflag
 
     file_stats.st_uid = (unsigned int)parse_octal(f_header->uid, sizeof(f_header->uid));
-    {
-        print_error("Unable to set uid]\n");
-        return -1;
-    }
     file_stats.st_gid = (unsigned int)parse_octal(f_header->gid, sizeof(f_header->gid));
-    {
-        print_error("Unable to set gid\n");
-        return -1;
-    }
     file_stats.st_size = lseek(fd, 0, SEEK_END); // could do parse_octal(f_header->size, 12);
-    {
-        print_error("Unable to set size\n");
-        return -1;
-    }
-    file_stats.st_mtime = parse_octal(f_header->mtime, sizeof(f_header->mtime));
-    {
-        print_error("Unable to set mtime\n");
-        return -1;
-    }
-
-    // need to look for fill_devmajor and fill_devminor if need to fill st_dev and st_rdev for block and char device
+    file_stats.st_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
 
     /* REMEMBER OCT STRING TO INT
    st_mode    chmod()   → Derived from the tar header’s mode and typeflag
@@ -987,6 +962,7 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
     // printf("write_file_data starting...\n");
     unsigned char transfer_buff[BLOCKSIZE];
     ssize_t total_bytes_written = 0;
+    ssize_t additional_size = 0;
     ssize_t n = 0;
     // This logic is for the partial writes in the events of system buffering and interrupts... more common in pipes,fifos and sockets
     // than regular files, but can possibly happen
@@ -1033,18 +1009,16 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
         // exit if exactly copied f_size bytes
         // if (f_size > 0 && total_bytes_written >= f_size)
         //     break;
-
+//******************************************************** */
         //checks if enough data read
-        if (f_size > 0 && total_bytes_written < f_size)
-        {
-            print_error("Source file shorter than specified size");
-            return -1;
-        }
+        // if (f_size > 0 && total_bytes_written < f_size)
+        // {
+        //     print_error("Source file shorter than specified size");
+        //     return -1;
+        // }
 
         // calculates write block padding
         // printf("bytes_written: %ld\n", total_bytes_written);
-
-        ssize_t additional_size = 0;
 
         if (total_bytes_written % BLOCKSIZE != 0)
         {
@@ -1070,7 +1044,9 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
             }
         }
     }
-    return 0;
+    int write_size = (long int)total_bytes_written + (long int)additional_size;
+    
+    return write_size;
 }
 // +11 lines are from debugging from write_file_data
 // printf("additional bytes_written: %d\n", add_written);
