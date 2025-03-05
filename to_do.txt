@@ -1,40 +1,13 @@
 To-Do Tuesday 3/3/25
 
 
-**************Start at line 731 >>> need to pass back struct * to calling function       ./my_tar -xf test.tar
+**************Start at line 735 >>> need to pass back struct * to calling function       ./my_tar -xf test.tar
 
-                    ln 690 and 719 call map_file_metadata() fn >>> need to pass struct *
+carry through and analyze the creation behavior and follow lseek. I believe the file metadata
+and dir metadata are fixed. So start here and carry through back to see if reading and writing
+correctly.
 
 
-code something like this...
-
-int map_file_metadata(header *f_header, int fd, struct stat *out_stats)
-{
-    if (fstat(fd, out_stats) == -1)
-    {
-        return -1;
-    }
-
-    switch (f_header->typeflag)
-    {
-    case '0':
-        out_stats->st_mode = (mode_t)0100000 & parse_octal(f_header->mode, sizeof(f_header->mode));
-        break;
-    case '2':
-        out_stats->st_mode = (mode_t)0120000 & parse_octal(f_header->mode, sizeof(f_header->mode));
-        break;
-    default:
-        print_error("Unable to set mode\n");
-        break;
-    }
-
-    out_stats->st_uid = (unsigned int)parse_octal(f_header->uid, sizeof(f_header->uid));
-    out_stats->st_gid = (unsigned int)parse_octal(f_header->gid, sizeof(f_header->gid));
-    out_stats->st_size = lseek(fd, 0, SEEK_END);
-    out_stats->st_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
-
-    return 0;
-}
 
 
 
