@@ -42,6 +42,7 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #include <grp.h>
 #include <utime.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include "utils.h"
 #include "my_printf.h"
@@ -573,17 +574,17 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
     lseek(tar_fd, 0, SEEK_SET);
 
     unsigned char header_block[512];
-    my_memset(header_block, 0, sizeof(header_block));
 
     while (current_block < total_blocks)
     {
+        my_memset(header_block, 0, sizeof(header_block));
         int n = 0;
         int returned_blocks = 0;
 
         // set block to current location ???
         // lseek(tar_fd, current_block * 512, SEEK_SET);
 
-        if ((n = read(tar_fd, header_block, 512) < 0) && n != 512)
+        if ((n = read(tar_fd + (current_block * 512), header_block, 512) < 0) && n != 512)
         {
             print_error("Unable to read magic tar file\n");
             return -1;
@@ -601,13 +602,14 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
              f_header->magic[5] == ' ') &&
             (num_ex_names == 0))
         {
-            // do I need written_blocks?
+            // do I need written_blocks? ... also is tar_fd starting from the point in which it left off
             if ((returned_blocks = extract_process_entry(f_header, tar_fd, current_block)) < 0)
             {
                 print_error("Error... unable to extract file from tar\n");
                 return -1;
             }
             current_block = returned_blocks;
+            continue;
         }
 
         // Extracting specific file names
@@ -721,15 +723,18 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
             print_error("unable to map header data to file stat\n");
             return -1;
         }
+
+        close(dir_fd);
     }
 
     return current_block;
 }
 
+/******************* */
 int map_file_metadata(header *f_header, int fd)
 {
     struct stat file_stats;
-    if (fstat(fd, &file_stats) == -1)
+        if (fstat(fd, &file_stats) == -1)
     {
         return -1;
     }
@@ -738,12 +743,22 @@ int map_file_metadata(header *f_header, int fd)
     switch (f_header->typeflag)
     {
     case '0':
-        file_stats.st_mode = (mode_t)0100000 & parse_octal(f_header->mode, sizeof(f_header->mode));
+        file_stats.st_mode = (mode_t)0100000 || parse_octal(f_header->mode, sizeof(f_header->mode));
+        if(fchmod(fd, file_stats.st_mode) < 0)
+        {
+            print_error("Unable to set mode");
+            return 1;
+        }
         break;
 
-    case '2':
-        file_stats.st_mode = (mode_t)0120000 & parse_octal(f_header->mode, sizeof(f_header->mode));
-        break;
+    // case '2':
+    //     file_stats->st_mode = (mode_t)0120000 || parse_octal(f_header->mode, sizeof(f_header->mode));
+    // if(fchmod(fd, file_stats->st_mode) < 0)
+    //     {
+    //         print_error("Unable to set mode");
+    //         return 1;
+    //     }
+    //     break;
 
     default:
         // file_stats.st_mode = '\0';
@@ -755,8 +770,19 @@ int map_file_metadata(header *f_header, int fd)
 
     file_stats.st_uid = (unsigned int)parse_octal(f_header->uid, sizeof(f_header->uid));
     file_stats.st_gid = (unsigned int)parse_octal(f_header->gid, sizeof(f_header->gid));
-    file_stats.st_size = lseek(fd, 0, SEEK_END); // could do parse_octal(f_header->size, 12);
-    file_stats.st_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
+    if(fchown(fd, file_stats.st_uid, file_stats.st_gid) < 0)
+    {
+        print_error("Unable to set file ownership");
+        return -1;
+    } 
+    //file_stats.st_size = lseek(fd, 0, SEEK_END); // could do parse_octal(f_header->size, 12);
+   
+    // struct timespec times[2]; 
+    // file_stats.st_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
+    // times[1].tv_sec = file_stats.st_mtime;
+    
+
+
 
     /* REMEMBER OCT STRING TO INT
    st_mode    chmod()   → Derived from the tar header’s mode and typeflag
