@@ -8,7 +8,9 @@ correctly also if after dir1 set ok if the if file name is directory1/file.txt
 will automatically place the file in the directory or if I have to open the directory
 and then write into it?
 
-
+file1.txt and file2.txt contents copying but not working correctly will not open correctly
+>>> file size need to truncate off the zeros... fix the logic so that the zero padding are not included
+in the file using file size
 
 carry through and analyze the creation behavior and follow lseek. I believe the file metadata
 and dir metadata are fixed. So start here and carry through back to see if reading and writing

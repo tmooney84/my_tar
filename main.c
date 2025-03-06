@@ -91,7 +91,7 @@ int write_padding(int tar_fd, int total_required_padding);
 int map_file_metadata(header *f_header, int fd);
 int map_dir_metadata(header *f_header, char *file_name);
 size_t parse_octal(char *str, size_t max_len);
-char * parse_dir_slash(char * file_name);
+char *parse_dir_slash(char *file_name);
 
 // tar -czf -t >>> will throw error
 // parse the files but if already c_flag, etc. is 1 then file_error(argv[i])
@@ -675,9 +675,26 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
 
 int extract_process_entry(header *f_header, int tar_fd, int current_block)
 {
-    char file_name[NAMESIZE];
-    //do I need to include the prefix as well!!!
-    my_strncpy(file_name, f_header->name, NAMESIZE);
+    char file_name[NAMESIZE + 155];
+
+    int name_len = my_strlen(f_header->name);
+
+    if (f_header->prefix[0] != '\0')
+    {
+        int prefix_len = my_strlen(f_header->prefix);
+        my_strncpy(file_name, f_header->prefix, prefix_len);
+        if(f_header->prefix[prefix_len -1] != '/')
+        {
+            file_name[prefix_len] = '/';
+            prefix_len++;
+        }
+        my_strncpy(file_name + prefix_len, f_header->name, name_len);
+    }
+
+    else
+    {
+        my_strncpy(file_name, f_header->name, NAMESIZE);
+    }
     int file_flags = O_RDWR | O_CREAT | O_TRUNC;
     int file_perms = (int)parse_octal(f_header->mode, sizeof(f_header->mode));
     char file_type = f_header->typeflag;
@@ -726,23 +743,23 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
     // if directory
     else if (file_type == '5')
     {
-   //     mode_t dir_mode = (mode_t)parse_octal(f_header->mode, sizeof(f_header->mode));
+        //     mode_t dir_mode = (mode_t)parse_octal(f_header->mode, sizeof(f_header->mode));
 
-          mode_t dir_mode = (mode_t)(0040000 | parse_octal(f_header->mode, sizeof(f_header->mode)));
-        
-          //!!! need to make sure that extended version of the name encodes correctly!!!
-        char * dir_name = parse_dir_slash(file_name);
+        mode_t dir_mode = (mode_t)(0040000 | parse_octal(f_header->mode, sizeof(f_header->mode)));
+
+        //!!! need to make sure that extended version of the name encodes correctly!!!
+        char *dir_name = parse_dir_slash(file_name);
 
         if (mkdir(dir_name, dir_mode) < 0)
         {
             print_error("mkdir failed\n");
             return -1;
         }
-            if (chmod(dir_name, file_perms) == -1)
-            {
-                print_error("fchmod failed");
-                return -1;
-            }
+        if (chmod(dir_name, file_perms) == -1)
+        {
+            print_error("fchmod failed");
+            return -1;
+        }
 
         if (map_dir_metadata(f_header, dir_name) < 0)
         {
@@ -751,39 +768,35 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
         }
 
         free(dir_name);
-
-        return 0;
     }
 
     return current_block;
 }
 
-
-char * parse_dir_slash(char * file_name)
+char *parse_dir_slash(char *file_name)
 {
     int file_name_size = my_strlen(file_name);
-    char * dir_name = malloc(sizeof(NAMESIZE));
-    if(!dir_name)
+    char *dir_name = malloc(sizeof(NAMESIZE));
+    if (!dir_name)
     {
         print_error("to create dir_name in parse_dir_slash()\n");
         return NULL;
-    } 
-    
+    }
+
     my_memset(dir_name, 0, NAMESIZE);
     int i = 0;
-    for(; i < file_name_size; i++)
+    for (; i < file_name_size; i++)
     {
         dir_name[i] = file_name[i];
     }
-    
-    if(file_name[file_name_size -1] == '/')
-        {
-        dir_name[file_name_size-1] = '\0';
-        }
-            
-            return dir_name;
-    }          
 
+    if (file_name[file_name_size - 1] == '/')
+    {
+        dir_name[file_name_size - 1] = '\0';
+    }
+
+    return dir_name;
+}
 
 /******************* */
 int map_file_metadata(header *f_header, int fd)
@@ -869,14 +882,14 @@ int map_dir_metadata(header *f_header, char *file_name)
     //     }
     //     break;
 
-        // case '2': //symbolic link
-        //     file_stats->st_mode = (mode_t)0120000 || parse_octal(f_header->mode, sizeof(f_header->mode));
-        // if(fchmod(fd, file_stats->st_mode) < 0)
-        //     {
-        //         print_error("Unable to set mode");
-        //         return 1;
-        //     }
-        //     break;
+    // case '2': //symbolic link
+    //     file_stats->st_mode = (mode_t)0120000 || parse_octal(f_header->mode, sizeof(f_header->mode));
+    // if(fchmod(fd, file_stats->st_mode) < 0)
+    //     {
+    //         print_error("Unable to set mode");
+    //         return 1;
+    //     }
+    //     break;
 
     // default:
     //     // file_stats.st_mode = '\0';
