@@ -118,10 +118,14 @@ diff <(hexdump -C file2.txt) <(hexdump -C file2orig.txt) && echo "Files match!" 
 
 echo ""
 
-echo "diff hexdump -C dir1 vs dir1orig output:"
-diff <(hexdump -C dir1) <(hexdump -C dir1orig)
+# echo "diff hexdump -C dir1 vs dir1orig output:"
+# diff <(hexdump -C dir1) <(hexdump -C dir1orig)
+
+ls -l
 
 echo ""
+
+cd dir1
 
 echo "diff hexdump -C txtdir1.txt vs txtdir1.txt (original) output:"
 diff <(hexdump -C dir1/txtdir1.txt) <(hexdump -C dir1orig/txtdir1.txt)
@@ -133,21 +137,19 @@ diff <(hexdump -C dir1/txtdir2.txt) <(hexdump -C dir1orig/txtdir2.txt)
 
 echo ""
 
+cd ..
+
 echo "file1.txt output:"
 cat file1.txt || exit 1
 
-echo "file1org.txt output:"
-cat file1org.txt || exit 1
+# echo "file1org.txt output:"
+# cat file1org.txt || exit 1
 
 echo "file2.txt output:"
 cat file2.txt || exit 1
 
-echo "file2org.txt output:"
-cat file2org.txt || exit 1
-
-
-
-
+# echo "file2org.txt output:"
+# cat file2org.txt || exit 1
 
 #  return to orginal directory
 cd .. || exits 1

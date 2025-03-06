@@ -86,7 +86,7 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names);
 int extract_process_entry(header *f_header, int tar_fd, int current_block);
 int process_entry(char *path, int tar_fd);
 int write_header(header *hdr, int tar_fd);
-int write_file_data(int dst_fd, int src_fd, int f_size);
+int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag);
 int write_padding(int tar_fd, int total_required_padding);
 int map_file_metadata(header *f_header, int fd);
 int map_dir_metadata(header *f_header, char *file_name);
@@ -721,7 +721,7 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
         long int num = 0;
         int num_blocks = 0;
 
-        num = write_file_data(fd, tar_fd, file_size);
+        num = write_file_data(fd, tar_fd, file_size, 0);
         if ((num < 0) && num != file_size)
         {
             print_error("Unable to extract file contents\n");
@@ -1076,7 +1076,7 @@ int append_file_data(int tar_fd, char *append_file)
     {
         int ts_n;
 
-        ts_n = write_file_data(tar_fd, append_fd, f_size);
+        ts_n = write_file_data(tar_fd, append_fd, f_size, 1);
 
         if (ts_n < 0)
         {
@@ -1111,7 +1111,7 @@ int write_header(header *hdr, int tar_fd)
     return 0;
 }
 
-int write_file_data(int dst_fd, int src_fd, int f_size)
+int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
 {
     // printf("write_file_data starting...\n");
     unsigned char transfer_buff[BLOCKSIZE];
@@ -1177,6 +1177,8 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
         // calculates write block padding
         // printf("bytes_written: %ld\n", total_bytes_written);
 
+        if(tar_flag == 1)
+        {
         if (total_bytes_written % BLOCKSIZE != 0)
         {
             additional_size = BLOCKSIZE - (total_bytes_written % BLOCKSIZE);
@@ -1198,7 +1200,8 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
                 add_written += written;
             }
         }
-    }
+        }
+   }
     int write_size = (long int)total_bytes_written + (long int)add_written;
 
     return write_size;
