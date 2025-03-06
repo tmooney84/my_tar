@@ -89,8 +89,9 @@ int write_header(header *hdr, int tar_fd);
 int write_file_data(int dst_fd, int src_fd, int f_size);
 int write_padding(int tar_fd, int total_required_padding);
 int map_file_metadata(header *f_header, int fd);
-int map_dir_metadata(header *f_header, char * file_name);
+int map_dir_metadata(header *f_header, char *file_name);
 size_t parse_octal(char *str, size_t max_len);
+char * parse_dir_slash(char * file_name);
 
 // tar -czf -t >>> will throw error
 // parse the files but if already c_flag, etc. is 1 then file_error(argv[i])
@@ -572,7 +573,7 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
     int current_block = 0;
 
     // makes sure tar_fd is at beginning of the file
-    if(lseek(tar_fd, 0, SEEK_SET) < 0)
+    if (lseek(tar_fd, 0, SEEK_SET) < 0)
     {
         print_error("Unable to lseek file\n");
         return -1;
@@ -582,6 +583,8 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
 
     while (current_block < total_blocks)
     {
+        // added to make sure aligned on correct block
+        lseek(tar_fd, current_block * 512, SEEK_SET);
         my_memset(header_buffer, 0, sizeof(header_buffer));
         int n = 0;
         int returned_blocks = 0;
@@ -589,8 +592,9 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
         // set block to current location ???
         // lseek(tar_fd, current_block * 512, SEEK_SET);
 
-        //if ((n = read(tar_fd + (current_block * 512), header_buffer, 512) < 0) && n != 512)
-        if ((n = read(tar_fd, header_buffer, 512) < 0) && n != 512)
+        // if ((n = read(tar_fd + (current_block * 512), header_buffer, 512) < 0) && n != 512)
+        n = read(tar_fd, header_buffer, 512);
+        if ((n < 0) && n != 512)
         {
             print_error("Unable to read magic tar file\n");
             return -1;
@@ -608,7 +612,7 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
              f_header->magic[5] == ' ') &&
             (num_ex_names == 0))
         {
-            // do I need written_blocks? 
+            // do I need written_blocks?
             if ((returned_blocks = extract_process_entry(f_header, tar_fd, current_block)) < 0)
             {
                 print_error("Error... unable to extract file from tar\n");
@@ -641,34 +645,38 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
     }
 
     // prints errors for those file names from command that are not found
-    int error_flag = 0;
-    for (int i = 0; i < num_ex_names; i++)
+
+    if (num_ex_names > 0)
     {
-        if (names_to_extract[i] == 0)
+        int error_flag = 0;
+        for (int i = 0; i < num_ex_names; i++)
         {
-            continue;
+            if (names_to_extract[i] == 0)
+            {
+                continue;
+            }
+
+            file_not_found_error(names_to_extract[i]);
+            error_flag = 1;
         }
-
-        file_not_found_error(names_to_extract[i]);
-        error_flag = 1;
+        if (error_flag == 1)
+        {
+            previous_errors();
+        }
+        //!!! Temporary
+        else
+        {
+            printf("No errors with prompted names\n");
+        }
+        //
     }
-    if (error_flag == 1)
-    {
-        previous_errors();
-    }
-    //!!! Temporary
-    else
-    {
-        printf("No errors with prompted names\n");
-    }
-    //
-
     return 0;
 }
 
 int extract_process_entry(header *f_header, int tar_fd, int current_block)
 {
     char file_name[NAMESIZE];
+    //do I need to include the prefix as well!!!
     my_strncpy(file_name, f_header->name, NAMESIZE);
     int file_flags = O_RDWR | O_CREAT | O_TRUNC;
     int file_perms = (int)parse_octal(f_header->mode, sizeof(f_header->mode));
@@ -684,10 +692,18 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
             my_printf("Unable to create %s", file_name);
             return -1;
         }
+        if (fd >= 0)
+        {
+            if (fchmod(fd, file_perms) == -1)
+            {
+                print_error("fchmod failed");
+                return -1;
+            }
+        }
 
         long int num = 0;
         int num_blocks = 0;
-        
+
         num = write_file_data(fd, tar_fd, file_size);
         if ((num < 0) && num != file_size)
         {
@@ -710,24 +726,31 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
     // if directory
     else if (file_type == '5')
     {
-        {
-            print_error("Unable to set mode\n");
-            return -1;
-        }
+   //     mode_t dir_mode = (mode_t)parse_octal(f_header->mode, sizeof(f_header->mode));
 
-        mode_t dir_mode = (mode_t)parse_octal(f_header->mode, sizeof(f_header->mode));
+          mode_t dir_mode = (mode_t)(0040000 | parse_octal(f_header->mode, sizeof(f_header->mode)));
+        
+          //!!! need to make sure that extended version of the name encodes correctly!!!
+        char * dir_name = parse_dir_slash(file_name);
 
-        if (mkdir(file_name, dir_mode) < 0)
+        if (mkdir(dir_name, dir_mode) < 0)
         {
             print_error("mkdir failed\n");
             return -1;
         }
+            if (chmod(dir_name, file_perms) == -1)
+            {
+                print_error("fchmod failed");
+                return -1;
+            }
 
-        if (map_dir_metadata(f_header, file_name) < 0)
+        if (map_dir_metadata(f_header, dir_name) < 0)
         {
             print_error("unable to map header data to file stat\n");
             return -1;
         }
+
+        free(dir_name);
 
         return 0;
     }
@@ -735,59 +758,85 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
     return current_block;
 }
 
+
+char * parse_dir_slash(char * file_name)
+{
+    int file_name_size = my_strlen(file_name);
+    char * dir_name = malloc(sizeof(NAMESIZE));
+    if(!dir_name)
+    {
+        print_error("to create dir_name in parse_dir_slash()\n");
+        return NULL;
+    } 
+    
+    my_memset(dir_name, 0, NAMESIZE);
+    int i = 0;
+    for(; i < file_name_size; i++)
+    {
+        dir_name[i] = file_name[i];
+    }
+    
+    if(file_name[file_name_size -1] == '/')
+        {
+        dir_name[file_name_size-1] = '\0';
+        }
+            
+            return dir_name;
+    }          
+
+
 /******************* */
 int map_file_metadata(header *f_header, int fd)
 {
     struct stat file_stats;
-        if (fstat(fd, &file_stats) == -1)
+    if (fstat(fd, &file_stats) == -1)
     {
+        // may need to create ffile_error()
+        print_error("Cannot stat tar file*** may need ffile_error");
         return -1;
     }
 
     //** need to make sure mode has the compressed permissions and file type */
-    switch (f_header->typeflag)
-    {
-    case '0':
-        file_stats.st_mode = (mode_t)0100000 || parse_octal(f_header->mode, sizeof(f_header->mode));
-        if(fchmod(fd, file_stats.st_mode) < 0)
-        {
-            print_error("Unable to set mode\n");
-            return 1;
-        }
-        break;
-
-    // case '2': //symbolic link
-    //     file_stats->st_mode = (mode_t)0120000 || parse_octal(f_header->mode, sizeof(f_header->mode));
-    // if(fchmod(fd, file_stats->st_mode) < 0)
+    // switch (f_header->typeflag)
+    // {
+    // case '0':
+    //     file_stats.st_mode = (mode_t)0100000 || parse_octal(f_header->mode, sizeof(f_header->mode));
+    //     if(fchmod(fd, file_stats.st_mode) < 0)
     //     {
-    //         print_error("Unable to set mode");
+    //         print_error("Unable to set mode\n");
     //         return 1;
     //     }
     //     break;
 
-    default:
-        // file_stats.st_mode = '\0';
-        print_error("Unable to set mode\n");
-        break;
-    }
+    // // case '2': //symbolic link
+    // //     file_stats->st_mode = (mode_t)0120000 || parse_octal(f_header->mode, sizeof(f_header->mode));
+    // // if(fchmod(fd, file_stats->st_mode) < 0)
+    // //     {
+    // //         print_error("Unable to set mode");
+    // //         return 1;
+    // //     }
+    // //     break;
+
+    // default:
+    //     // file_stats.st_mode = '\0';
+    //     print_error("Unable to set mode\n");
+    //     break;
+    // }
 
     ///...if others needed get from fill_typeflag
 
     file_stats.st_uid = (unsigned int)parse_octal(f_header->uid, sizeof(f_header->uid));
     file_stats.st_gid = (unsigned int)parse_octal(f_header->gid, sizeof(f_header->gid));
-    if(fchown(fd, file_stats.st_uid, file_stats.st_gid) < 0)
+    if (fchown(fd, file_stats.st_uid, file_stats.st_gid) < 0)
     {
         print_error("Unable to set file ownership\n");
         return -1;
-    } 
-    //file_stats.st_size = lseek(fd, 0, SEEK_END); // could do parse_octal(f_header->size, 12);
-   
-    // struct timespec times[2]; 
+    }
+    // file_stats.st_size = lseek(fd, 0, SEEK_END); // could do parse_octal(f_header->size, 12);
+
+    // struct timespec times[2];
     // file_stats.st_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
     // times[1].tv_sec = file_stats.st_mtime;
-    
-
-
 
     /* REMEMBER OCT STRING TO INT
    st_mode    chmod()   → Derived from the tar header’s mode and typeflag
@@ -800,62 +849,55 @@ map_file_data(f_header, fd)
     return 0;
 }
 
-
-
-
-
-int map_dir_metadata(header *f_header, char * file_name)
+int map_dir_metadata(header *f_header, char *file_name)
 {
     struct stat file_stats;
-        if (stat(file_name, &file_stats) == -1)
+    if (stat(file_name, &file_stats) == -1)
     {
         return -1;
     }
 
     //** need to make sure mode has the compressed permissions and file type */
-    switch (f_header->typeflag)
-    {
-    case '0':
-        file_stats.st_mode = (mode_t)0100000 || parse_octal(f_header->mode, sizeof(f_header->mode));
-        if(chmod(file_name, file_stats.st_mode) < 0)
-        {
-            print_error("Unable to set mode\n");
-            return 1;
-        }
-        break;
-
-    // case '2': //symbolic link
-    //     file_stats->st_mode = (mode_t)0120000 || parse_octal(f_header->mode, sizeof(f_header->mode));
-    // if(fchmod(fd, file_stats->st_mode) < 0)
+    // switch (f_header->typeflag)
+    // {
+    // case '0':
+    //     file_stats.st_mode = (mode_t)0100000 || parse_octal(f_header->mode, sizeof(f_header->mode));
+    //     if (chmod(file_name, file_stats.st_mode) < 0)
     //     {
-    //         print_error("Unable to set mode");
+    //         print_error("Unable to set mode\n");
     //         return 1;
     //     }
     //     break;
 
-    default:
-        // file_stats.st_mode = '\0';
-        print_error("Unable to set mode\n");
-        break;
-    }
+        // case '2': //symbolic link
+        //     file_stats->st_mode = (mode_t)0120000 || parse_octal(f_header->mode, sizeof(f_header->mode));
+        // if(fchmod(fd, file_stats->st_mode) < 0)
+        //     {
+        //         print_error("Unable to set mode");
+        //         return 1;
+        //     }
+        //     break;
+
+    // default:
+    //     // file_stats.st_mode = '\0';
+    //     print_error("Unable to set mode\n");
+    //     break;
+    // }
 
     ///...if others needed get from fill_typeflag
 
     file_stats.st_uid = (unsigned int)parse_octal(f_header->uid, sizeof(f_header->uid));
     file_stats.st_gid = (unsigned int)parse_octal(f_header->gid, sizeof(f_header->gid));
-    if(chown(file_name, file_stats.st_uid, file_stats.st_gid) < 0)
+    if (chown(file_name, file_stats.st_uid, file_stats.st_gid) < 0)
     {
         print_error("Unable to set file ownership\n");
         return -1;
-    } 
-    //file_stats.st_size = lseek(fd, 0, SEEK_END); // could do parse_octal(f_header->size, 12);
-   
-    // struct timespec times[2]; 
+    }
+    // file_stats.st_size = lseek(fd, 0, SEEK_END); // could do parse_octal(f_header->size, 12);
+
+    // struct timespec times[2];
     // file_stats.st_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
     // times[1].tv_sec = file_stats.st_mtime;
-    
-
-
 
     /* REMEMBER OCT STRING TO INT
    st_mode    chmod()   → Derived from the tar header’s mode and typeflag
@@ -867,15 +909,6 @@ map_file_data(f_header, fd)
 */
     return 0;
 }
-
-
-
-
-
-
-
-
-
 
 size_t parse_octal(char *str, size_t max_len)
 {
@@ -1072,12 +1105,15 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
     ssize_t total_bytes_written = 0;
     ssize_t additional_size = 0;
     ssize_t n = 0;
+    ssize_t add_written = 0; // taken from the bottom conditional to carry through at end total
     // This logic is for the partial writes in the events of system buffering and interrupts... more common in pipes,fifos and sockets
     // than regular files, but can possibly happen
 
     while (1)
     {
-        ssize_t bytes_to_read = BLOCKSIZE;
+        ssize_t bytes_to_read = 0;
+        //^^^ replaced with 0
+        // ssize_t bytes_to_read = BLOCKSIZE;
 
         // calculates read size
         if (f_size > 0)
@@ -1117,8 +1153,8 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
         // exit if exactly copied f_size bytes
         // if (f_size > 0 && total_bytes_written >= f_size)
         //     break;
-//******************************************************** */
-        //checks if enough data read
+        //******************************************************** */
+        // checks if enough data read
         // if (f_size > 0 && total_bytes_written < f_size)
         // {
         //     print_error("Source file shorter than specified size");
@@ -1138,8 +1174,6 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
             unsigned char add_buff[additional_size];
             my_memset(add_buff, '\0', additional_size);
 
-            ssize_t add_written = 0;
-
             while (add_written < additional_size)
             {
                 ssize_t written = write(dst_fd, add_buff + add_written, additional_size - add_written);
@@ -1152,8 +1186,8 @@ int write_file_data(int dst_fd, int src_fd, int f_size)
             }
         }
     }
-    int write_size = (long int)total_bytes_written + (long int)additional_size;
-    
+    int write_size = (long int)total_bytes_written + (long int)add_written;
+
     return write_size;
 }
 // +11 lines are from debugging from write_file_data
