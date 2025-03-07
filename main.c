@@ -171,15 +171,19 @@ int main(int argc, char **argv)
             print_error("Error creating tar file\n");
             return -1;
         }
-        
-        print_included_tar_contents(tar_fd, names, num_names);
-    
+
+        if(print_included_tar_contents(tar_fd, names, num_names)< 0)
+        {
+            print_error("Unable to print contents of tar file");
+            return 1;
+        }
 
 
 
 
 
- 
+
+
 
 
 
@@ -341,11 +345,6 @@ int open_file(char *file_name, int flags, int perms)
     return fd;
 }
 
-
-
-
-
-
 int open_tar(char **names, int num_names) // int v_flag
 {
     int tar_fd;
@@ -353,25 +352,23 @@ int open_tar(char **names, int num_names) // int v_flag
     char *tar_name = names[0];
     // printf("tar_name: %s\n", tar_name);
 
-    //vvvvvvvvvvvvvvvvvvv// keep this name
+    // vvvvvvvvvvvvvvvvvvv// keep this name
     tar_fd = create_tar_file(tar_name, 't');
     return tar_fd;
-    }
+}
 
+// need to parse out the file names and use the same logic as found in create_tar just as open tar
+int print_included_tar_contents(int tar_fd, char **names, int num_names)
+{
 
-
-        //need to parse out the file names and use the same logic as found in create_tar just as open tar
-        void print_included_tar_contents(tar_fd, names, num_names)
-        {
-    
-        if (tar_fd < 0)
+    if (tar_fd < 0)
     {
         return -1;
     }
 
-        //need to start loop in file group bytes as header
+    // need to start loop in file group bytes as header
 
-struct stat tar_stats;
+    struct stat tar_stats;
     if (fstat(tar_fd, &tar_stats) == -1)
     {
         print_error("Unable to stat tar\n");
@@ -400,7 +397,7 @@ struct stat tar_stats;
     while (current_block < total_blocks)
     {
 
-    // added to make sure aligned on correct block
+        // added to make sure aligned on correct block
         lseek(tar_fd, current_block * 512, SEEK_SET);
         my_memset(header_buffer, 0, sizeof(header_buffer));
         int n = 0;
@@ -426,61 +423,59 @@ struct stat tar_stats;
              f_header->magic[2] == 't' &&
              f_header->magic[3] == 'a' &&
              f_header->magic[4] == 'r' &&
-             f_header->magic[5] == ' ')) {
-
-if (num_names == 1)
-    {
-        printtf("s%s\n",hdr->name);
-    }
-
-else if(num_names > 1)
-   {
-
-    int name_found = 0;
-
-    for (int i = 1; i < num_names; i++)
+             f_header->magic[5] == ' '))
         {
-            if(names[i] == hdr->name)
+
+            if (num_names == 1)
             {
-                my_printf("%s\n",names[i]);
-                name_found = 1;
+                printtf("s%s\n", f_header->name);
+            }
+
+            else if (num_names > 1)
+            {
+                int missing_names_flag = 0;
+                int *names_log = (int *)malloc(num_names * sizeof(int));
+                if (!names_log)
+                {
+                    failed_alloc();
+                    return -1;
+                }
+
+                my_memset(names_log, 0, num_names * sizeof(int));
+
+                for (int i = 1; i < num_names; i++)
+                {
+                    if (names[i] == f_header->name)
+                    {
+                        my_printf("%s\n", names[i]);
+                        names_log[i] = 1;
+                    }
+                    else
+                    {
+                        missing_names_flag = 1;
+                    }
+                }
+
+                if (missing_names_flag = 1)
+                {
+
+                    // need to get names!!!
+                    for (int j = 1; j < num_names; j++)
+                    {
+                        if (names_log[j] == 0)
+                        {
+                            file_not_found_error(names[j]);
+                        }
+                    }
+                    previous_errors();
+                }
+                free(names_log);
             }
         }
-
-    if(name_found = 0)
-{
-
-    //need to get names!!!
-for (int j = 1; j < num_names; j++)
-{
-    file_not_found_error(num_names(j));
-}
-previous_errors()
-}
     }
-
     close(tar_fd);
-
     return 0;
 }
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 int create_tar_file(char *tar_name, char op_flag)
 {
