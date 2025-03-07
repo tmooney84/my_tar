@@ -125,19 +125,17 @@ ls -l
 
 echo ""
 
-cd dir1
-
 echo "diff hexdump -C txtdir1.txt vs txtdir1.txt (original) output:"
-diff <(hexdump -C dir1/txtdir1.txt) <(hexdump -C dir1orig/txtdir1.txt)
+diff <(hexdump -C dir1/txtdir1.txt) <(hexdump -C dir1orig/txtdir1.txt) && echo "Files match!" || echo "Files differ!"
 
 echo ""
 
 echo "diff hexdump -C dir1 vs dir1orig output:"
-diff <(hexdump -C dir1/txtdir2.txt) <(hexdump -C dir1orig/txtdir2.txt)
+diff <(hexdump -C dir1/txtdir2.txt) <(hexdump -C dir1orig/txtdir2.txt) && echo "Files match!" || echo "Files differ!"
 
 echo ""
 
-cd ..
+#cd ..
 
 echo "file1.txt output:"
 cat file1.txt || exit 1

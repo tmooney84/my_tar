@@ -161,6 +161,21 @@ int main(int argc, char **argv)
     {
         // t_flag = 1;
         // f_flag = 1;
+        /*
+        so for listing I need to cycle through each block of the record look for ustar and then if ustar
+        my_printf the name; if a name is specified print that name as well.
+       
+        ***need to parse out the file names and use the same logic as found in create_tar just as open tar
+        print_included_contents()
+        int fd = create_tar(names, num_names);
+        if (fd < 0)
+        {
+            print_error("Error creating tar file\n");
+            return -1;
+        }
+
+        */
+           
     }
     // else if(my_strcmp(argv[1], "-tvf")==0)
     //     {
@@ -323,6 +338,11 @@ int create_tar_file(char *tar_name, char op_flag)
     if (op_flag == 'c')
     {
         tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_TRUNC, TAR_PERMS);
+    }
+
+    if (op_flag == 't')
+    {
+        tar_fd = create_file(tar_name, O_RDONLY , TAR_PERMS);
     }
 
     else if (op_flag == 'r' || op_flag == 'u')
@@ -743,11 +763,8 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
     // if directory
     else if (file_type == '5')
     {
-        //     mode_t dir_mode = (mode_t)parse_octal(f_header->mode, sizeof(f_header->mode));
-
         mode_t dir_mode = (mode_t)(0040000 | parse_octal(f_header->mode, sizeof(f_header->mode)));
 
-        //!!! need to make sure that extended version of the name encodes correctly!!!
         char *dir_name = parse_dir_slash(file_name);
 
         if (mkdir(dir_name, dir_mode) < 0)
@@ -936,77 +953,6 @@ size_t parse_octal(char *str, size_t max_len)
     return num;
 }
 
-// int extract_process_entry(char *path, int tar_fd)
-// {
-//     //need to find file header by magic and see if
-//     //name matches path, file or dir... if file extract_file(), if directory create dir
-//     //move into and then create file
-
-//     //if path create file with the name and copy into
-//     //file
-
-//     write_header(hdr, tar_fd);
-
-//     free(hdr);
-
-//     if (S_ISREG(arg_stats.st_mode))
-//     {
-//         // if file to append
-//         if (append_file_data(tar_fd, path) != 0)
-//         {
-//             file_error(path);
-//             return -1;
-//         }
-//     }
-
-//     else if (S_ISDIR(arg_stats.st_mode))
-//     {
-//         DIR *dir = opendir(path);
-//         if (!dir)
-//         {
-//             file_error(path);
-//             return -1;
-//         }
-
-//         struct dirent *entry;
-
-//         while ((entry = readdir(dir)) != NULL)
-//         {
-//             if (my_strcmp(entry->d_name, ".") == 0 || my_strcmp(entry->d_name, "..") == 0)
-//             {
-//                 continue;
-//             }
-
-//             char rel_path[PATH_MAX];
-//             my_memset(rel_path, 0, PATH_MAX);
-
-//             int entry_name_len = my_strlen(entry->d_name);
-//             int path_len = my_strlen(path);
-
-//             my_strncpy(rel_path, path, path_len);
-//             rel_path[path_len] = '/';
-//             my_strncpy(rel_path + path_len + 1, entry->d_name, entry_name_len);
-
-//             //printf("Full Path Name: %s\n", rel_path);
-//             if (process_entry(rel_path, tar_fd) < 0)
-//             {
-//                 print_error("Failure to process directory entries");
-//                 closedir(dir);
-//                 return -1;
-//             }
-//         }
-
-//         closedir(dir);
-
-//         //    if(v_flag) >>> to print the file that was added
-//         // {
-//         //     my_printf("%s\n", names[i]);
-//         // }
-//     }
-
-//     return 0;
-// }
-
 int write_padding(int tar_fd, int total_required_padding)
 {
     char zero_buff[total_required_padding];
@@ -1111,7 +1057,13 @@ int write_header(header *hdr, int tar_fd)
     return 0;
 }
 
-int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
+
+/* 
+write_file_data(): logic is for the partial writes in the events of system buffering and interrupts. 
+It a more common in pipes,fifos and sockets than regular files, but can possibly happen during larger
+file writes.
+*/
+ int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
 {
     // printf("write_file_data starting...\n");
     unsigned char transfer_buff[BLOCKSIZE];
@@ -1119,9 +1071,7 @@ int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
     ssize_t additional_size = 0;
     ssize_t n = 0;
     ssize_t add_written = 0; // taken from the bottom conditional to carry through at end total
-    // This logic is for the partial writes in the events of system buffering and interrupts... more common in pipes,fifos and sockets
-    // than regular files, but can possibly happen
-
+    
     while (1)
     {
         ssize_t bytes_to_read = 0;
@@ -1163,20 +1113,7 @@ int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
         }
         total_bytes_written += n;
 
-        // exit if exactly copied f_size bytes
-        // if (f_size > 0 && total_bytes_written >= f_size)
-        //     break;
-        //******************************************************** */
-        // checks if enough data read
-        // if (f_size > 0 && total_bytes_written < f_size)
-        // {
-        //     print_error("Source file shorter than specified size");
-        //     return -1;
-        // }
-
-        // calculates write block padding
-        // printf("bytes_written: %ld\n", total_bytes_written);
-
+        //if writing to tar file add intra-block padding
         if(tar_flag == 1)
         {
         if (total_bytes_written % BLOCKSIZE != 0)
