@@ -75,7 +75,7 @@ header *fill_header_info(char *file);
 
 char **create_names_array(int argc, char **argv, int num_names);
 
-int create_file(char *file_name, int flags, int perms);
+int open_file(char *file_name, int flags, int perms);
 int create_tar(char **names, int num_names); // int v_flag
 int create_tar_file(char *tar_name, char op_flag);
 int append_file_data(int tar_fd, char *append_file);
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
     //*********************need to count the number of dashes and redo this section!!! tar -c -f  versus  tar -cf name.tar file_name
     else if (my_strcmp(argv[1], "-cf") == 0)
     {
-        // int fd = create_file("zzz.txt", O_CREAT | O_RDWR, 0664);
+        // int fd = open_file("zzz.txt", O_CREAT | O_RDWR, 0664);
         int fd = create_tar(names, num_names);
         if (fd < 0)
         {
@@ -167,7 +167,7 @@ int main(int argc, char **argv)
        
         ***need to parse out the file names and use the same logic as found in create_tar just as open tar
         print_included_contents()
-        int fd = create_tar(names, num_names);
+        int fd = open_tar(names, num_names); >>> a lot of similar logic to create_tar
         if (fd < 0)
         {
             print_error("Error creating tar file\n");
@@ -318,7 +318,7 @@ char **create_names_array(int argc, char **argv, int num_names)
 }
 // 346-416 commented for testing
 
-int create_file(char *file_name, int flags, int perms)
+int open_file(char *file_name, int flags, int perms)
 {
     int fd;
     fd = open(file_name, flags, perms);
@@ -337,19 +337,19 @@ int create_tar_file(char *tar_name, char op_flag)
     // create tar file:
     if (op_flag == 'c')
     {
-        tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_TRUNC, TAR_PERMS);
+        tar_fd = open_file(tar_name, O_RDWR | O_CREAT | O_TRUNC, TAR_PERMS);
     }
 
-    if (op_flag == 't')
+    else if (op_flag == 't')
     {
-        tar_fd = create_file(tar_name, O_RDONLY , TAR_PERMS);
+        tar_fd = open_file(tar_name, O_RDONLY , TAR_PERMS);
     }
 
     else if (op_flag == 'r' || op_flag == 'u')
     {
-        tar_fd = create_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
+        tar_fd = open_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
     }
-    // tar_fd = create_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
+    // tar_fd = open_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
     // printf("tar_fd: %d\n", tar_fd);
 
     else
@@ -723,7 +723,7 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
     // if reg file or symbolic link 0, 2  // need to check how this covers symbolic links
     if (file_type == '0' || file_type == '2')
     {
-        int fd = create_file(file_name, file_flags, file_perms);
+        int fd = open_file(file_name, file_flags, file_perms);
         if (fd < 0)
         {
             my_printf("Unable to create %s", file_name);
@@ -1196,7 +1196,7 @@ determine total size of files + size of headers + 2 "00" 512bytes with padding t
 how many records are needed (20 blocks/ record)
 
 1) -create file with the supplied name
-function: create_file(char *file_name)
+function: open_file(char *file_name)
 
 could be more efficient if do a first sweep through gathering the data and building temporary
 tars
