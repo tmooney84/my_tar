@@ -1,4 +1,9 @@
-To-Do Tuesday 3/3/25                  ./my_tar -xf test.tar
+To-Do Friday 3/7/25                  ./my_tar -xf test.tar
+                                              -tf test.tar
+
+
+*** need to make sure these work:   ./my_tar -xf test.tar test1.txt wrong_name.txt
+                                    ./my_tar -tf test.tar test1.txt wrong_name.txt
 
 it looks like the files within sub-directories are not writing correctly>>> need to see
 if creating a file like this "directory1/file1.txt" will put it automatically in directory1

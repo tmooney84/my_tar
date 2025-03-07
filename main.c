@@ -72,10 +72,10 @@ void failed_alloc();
 void print_string_array(char **all_names, int num_names);
 void free_string_array(char **names, int num_names);
 header *fill_header_info(char *file);
-
 char **create_names_array(int argc, char **argv, int num_names);
-
+int open_tar(char **names);
 int open_file(char *file_name, int flags, int perms);
+int print_included_tar_contents(int tar_fd, char **names, int num_names);
 int create_tar(char **names, int num_names); // int v_flag
 int create_tar_file(char *tar_name, char op_flag);
 int append_file_data(int tar_fd, char *append_file);
@@ -161,36 +161,19 @@ int main(int argc, char **argv)
     {
         // t_flag = 1;
         // f_flag = 1;
-        /*
-        so for listing I need to cycle through each block of the record look for ustar and then if ustar
-        my_printf the name; if a name is specified print that name as well.
 
-        int tar_fd = open_tar(names, num_names); >>> a lot of similar logic to create_tar
+        int tar_fd = open_tar(names);
         if (tar_fd < 0)
         {
             print_error("Error creating tar file\n");
             return -1;
         }
 
-        if(print_included_tar_contents(tar_fd, names, num_names)< 0)
+        if (print_included_tar_contents(tar_fd, names, num_names) < 0)
         {
             print_error("Unable to print contents of tar file");
             return 1;
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-*/
     }
     // else if(my_strcmp(argv[1], "-tvf")==0)
     //     {
@@ -345,7 +328,7 @@ int open_file(char *file_name, int flags, int perms)
     return fd;
 }
 
-int open_tar(char **names, int num_names) // int v_flag
+int open_tar(char **names) // int v_flag
 {
     int tar_fd;
 
@@ -360,14 +343,6 @@ int open_tar(char **names, int num_names) // int v_flag
 // need to parse out the file names and use the same logic as found in create_tar just as open tar
 int print_included_tar_contents(int tar_fd, char **names, int num_names)
 {
-
-    if (tar_fd < 0)
-    {
-        return -1;
-    }
-
-    // need to start loop in file group bytes as header
-
     struct stat tar_stats;
     if (fstat(tar_fd, &tar_stats) == -1)
     {
@@ -376,16 +351,8 @@ int print_included_tar_contents(int tar_fd, char **names, int num_names)
     }
 
     long int tar_size = (long int)tar_stats.st_size;
-    int total_blocks = tar_size / BLOCKSIZE;
-    if (tar_size % BLOCKSIZE != 0)
-    {
-        print_error("Error non-uniform tar size\n");
-        return -1;
-    }
-
-    int current_block = 0;
-
-    // makes sure tar_fd is at beginning of the file
+    
+    // make sure at beginning of tar_fd
     if (lseek(tar_fd, 0, SEEK_SET) < 0)
     {
         print_error("Unable to lseek file\n");
@@ -393,27 +360,29 @@ int print_included_tar_contents(int tar_fd, char **names, int num_names)
     }
 
     unsigned char header_buffer[512];
+    int read_size = 0;
 
-    while (current_block < total_blocks)
+    int *names_log = (int *)malloc(num_names * sizeof(int));
+    if (!names_log)
     {
+        failed_alloc();
+        return -1;
+    }
+    my_memset(names_log, 0, num_names * sizeof(int));
 
-        // added to make sure aligned on correct block
-        lseek(tar_fd, current_block * 512, SEEK_SET);
+
+    while (read_size < tar_size)
+    {
         my_memset(header_buffer, 0, sizeof(header_buffer));
         int n = 0;
-        int returned_blocks = 0;
 
-        // set block to current location ???
-        // lseek(tar_fd, current_block * 512, SEEK_SET);
-
-        // if ((n = read(tar_fd + (current_block * 512), header_buffer, 512) < 0) && n != 512)
         n = read(tar_fd, header_buffer, 512);
         if ((n < 0) && n != 512)
         {
             print_error("Unable to read magic tar file\n");
             return -1;
         }
-        current_block++;
+        read_size += n;
 
         struct header *f_header = (struct header *)header_buffer;
 
@@ -428,20 +397,11 @@ int print_included_tar_contents(int tar_fd, char **names, int num_names)
 
             if (num_names == 1)
             {
-                printtf("s%s\n", f_header->name);
+                my_printf("%s\n", f_header->name);
             }
 
             else if (num_names > 1)
             {
-                int missing_names_flag = 0;
-                int *names_log = (int *)malloc(num_names * sizeof(int));
-                if (!names_log)
-                {
-                    failed_alloc();
-                    return -1;
-                }
-
-                my_memset(names_log, 0, num_names * sizeof(int));
 
                 for (int i = 1; i < num_names; i++)
                 {
@@ -450,31 +410,28 @@ int print_included_tar_contents(int tar_fd, char **names, int num_names)
                         my_printf("%s\n", names[i]);
                         names_log[i] = 1;
                     }
-                    else
-                    {
-                        missing_names_flag = 1;
-                    }
                 }
-
-                if (missing_names_flag = 1)
-                {
-
-                    // need to get names!!!
-                    for (int j = 1; j < num_names; j++)
-                    {
-                        if (names_log[j] == 0)
-                        {
-                            file_not_found_error(names[j]);
-                        }
-                    }
-                    previous_errors();
-                }
-                free(names_log);
             }
         }
     }
-    close(tar_fd);
-    return 0;
+
+    int missing_names_flag = 0;
+    for (int j = 1; j < num_names; j++)
+    {
+        if (names_log[j] == 0)
+        {
+            file_not_found_error(names[j]);
+            missing_names_flag = 1;
+        }
+    }
+    if (missing_names_flag)
+    {
+        previous_errors();
+    }
+
+free(names_log);
+close(tar_fd);
+return 0;
 }
 
 int create_tar_file(char *tar_name, char op_flag)

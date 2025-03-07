@@ -149,6 +149,51 @@ cat file2.txt || exit 1
 # echo "file2org.txt output:"
 # cat file2org.txt || exit 1
 
+echo ""
+
+echo "------------------------------------------------------------------"
+
+echo "TEST 4: tar -tf test.tar"
+
+./my_tar -tf test.tar | tee my_printtar.txt
+
+tar -tf test.tar | tee printtar.txt
+
+echo "diff ./my_tar -tf test.tar vs. tar -tf test.tar"
+diff my_printtar.txt printtar.txt && echo "Files match!" || echo "Files differ!"
+
+rm my_printtar.txt printtar.txt
+
+echo "------------------------------------------------------------------"
+
+echo "TEST 5: tar -tf test.tar with functional additional args"
+
+./my_tar -tf test.tar file1.txt | tee my_printtar.txt
+
+tar -tf test.tar file1.txt | tee printtar.txt
+
+echo "diff ./my_tar -tf test.tar file1.txt vs. tar -tf test.tar"
+diff my_printtar.txt printtar.txt && echo "Files match!" || echo "Files differ!"
+
+rm my_printtar.txt printtar.txt
+
+echo "------------------------------------------------------------------"
+
+echo "TEST 5: tar -tf test.tar with functional additional args"
+
+./my_tar -tf test.tar file1.txt wrongfile.txt | tee my_printtar.txt
+
+tar -tf test.tar file1.txt wrongfile.txt | tee printtar.txt
+
+echo "diff ./my_tar -tf test.tar file1.txt vs. tar -tf test.tar"
+diff my_printtar.txt printtar.txt && echo "Files match!" || echo "Files differ!"
+
+rm my_printtar.txt printtar.txt
+
+
+
+
+
 #  return to orginal directory
 cd .. || exits 1
 
