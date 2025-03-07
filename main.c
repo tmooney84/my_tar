@@ -164,18 +164,29 @@ int main(int argc, char **argv)
         /*
         so for listing I need to cycle through each block of the record look for ustar and then if ustar
         my_printf the name; if a name is specified print that name as well.
-       
-        ***need to parse out the file names and use the same logic as found in create_tar just as open tar
-        print_included_contents()
-        int fd = open_tar(names, num_names); >>> a lot of similar logic to create_tar
-        if (fd < 0)
+
+        int tar_fd = open_tar(names, num_names); >>> a lot of similar logic to create_tar
+        if (tar_fd < 0)
         {
             print_error("Error creating tar file\n");
             return -1;
         }
+        
+        print_included_tar_contents(tar_fd, names, num_names);
+    
 
-        */
-           
+
+
+
+
+ 
+
+
+
+
+
+
+*/
     }
     // else if(my_strcmp(argv[1], "-tvf")==0)
     //     {
@@ -330,6 +341,147 @@ int open_file(char *file_name, int flags, int perms)
     return fd;
 }
 
+
+
+
+
+
+int open_tar(char **names, int num_names) // int v_flag
+{
+    int tar_fd;
+
+    char *tar_name = names[0];
+    // printf("tar_name: %s\n", tar_name);
+
+    //vvvvvvvvvvvvvvvvvvv// keep this name
+    tar_fd = create_tar_file(tar_name, 't');
+    return tar_fd;
+    }
+
+
+
+        //need to parse out the file names and use the same logic as found in create_tar just as open tar
+        void print_included_tar_contents(tar_fd, names, num_names)
+        {
+    
+        if (tar_fd < 0)
+    {
+        return -1;
+    }
+
+        //need to start loop in file group bytes as header
+
+struct stat tar_stats;
+    if (fstat(tar_fd, &tar_stats) == -1)
+    {
+        print_error("Unable to stat tar\n");
+        return -1;
+    }
+
+    long int tar_size = (long int)tar_stats.st_size;
+    int total_blocks = tar_size / BLOCKSIZE;
+    if (tar_size % BLOCKSIZE != 0)
+    {
+        print_error("Error non-uniform tar size\n");
+        return -1;
+    }
+
+    int current_block = 0;
+
+    // makes sure tar_fd is at beginning of the file
+    if (lseek(tar_fd, 0, SEEK_SET) < 0)
+    {
+        print_error("Unable to lseek file\n");
+        return -1;
+    }
+
+    unsigned char header_buffer[512];
+
+    while (current_block < total_blocks)
+    {
+
+    // added to make sure aligned on correct block
+        lseek(tar_fd, current_block * 512, SEEK_SET);
+        my_memset(header_buffer, 0, sizeof(header_buffer));
+        int n = 0;
+        int returned_blocks = 0;
+
+        // set block to current location ???
+        // lseek(tar_fd, current_block * 512, SEEK_SET);
+
+        // if ((n = read(tar_fd + (current_block * 512), header_buffer, 512) < 0) && n != 512)
+        n = read(tar_fd, header_buffer, 512);
+        if ((n < 0) && n != 512)
+        {
+            print_error("Unable to read magic tar file\n");
+            return -1;
+        }
+        current_block++;
+
+        struct header *f_header = (struct header *)header_buffer;
+
+        // Extracting the entire tar file
+        if ((f_header->magic[0] == 'u' &&
+             f_header->magic[1] == 's' &&
+             f_header->magic[2] == 't' &&
+             f_header->magic[3] == 'a' &&
+             f_header->magic[4] == 'r' &&
+             f_header->magic[5] == ' ')) {
+
+if (num_names == 1)
+    {
+        printtf("s%s\n",hdr->name);
+    }
+
+else if(num_names > 1)
+   {
+
+    int name_found = 0;
+
+    for (int i = 1; i < num_names; i++)
+        {
+            if(names[i] == hdr->name)
+            {
+                my_printf("%s\n",names[i]);
+                name_found = 1;
+            }
+        }
+
+    if(name_found = 0)
+{
+
+    //need to get names!!!
+for (int j = 1; j < num_names; j++)
+{
+    file_not_found_error(num_names(j));
+}
+previous_errors()
+}
+    }
+
+    close(tar_fd);
+
+    return 0;
+}
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 int create_tar_file(char *tar_name, char op_flag)
 {
     int tar_fd;
@@ -342,7 +494,7 @@ int create_tar_file(char *tar_name, char op_flag)
 
     else if (op_flag == 't')
     {
-        tar_fd = open_file(tar_name, O_RDONLY , TAR_PERMS);
+        tar_fd = open_file(tar_name, O_RDONLY, TAR_PERMS);
     }
 
     else if (op_flag == 'r' || op_flag == 'u')
@@ -703,7 +855,7 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
     {
         int prefix_len = my_strlen(f_header->prefix);
         my_strncpy(file_name, f_header->prefix, prefix_len);
-        if(f_header->prefix[prefix_len -1] != '/')
+        if (f_header->prefix[prefix_len - 1] != '/')
         {
             file_name[prefix_len] = '/';
             prefix_len++;
@@ -1057,13 +1209,12 @@ int write_header(header *hdr, int tar_fd)
     return 0;
 }
 
-
-/* 
-write_file_data(): logic is for the partial writes in the events of system buffering and interrupts. 
+/*
+write_file_data(): logic is for the partial writes in the events of system buffering and interrupts.
 It a more common in pipes,fifos and sockets than regular files, but can possibly happen during larger
 file writes.
 */
- int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
+int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
 {
     // printf("write_file_data starting...\n");
     unsigned char transfer_buff[BLOCKSIZE];
@@ -1071,7 +1222,7 @@ file writes.
     ssize_t additional_size = 0;
     ssize_t n = 0;
     ssize_t add_written = 0; // taken from the bottom conditional to carry through at end total
-    
+
     while (1)
     {
         ssize_t bytes_to_read = 0;
@@ -1113,32 +1264,32 @@ file writes.
         }
         total_bytes_written += n;
 
-        //if writing to tar file add intra-block padding
-        if(tar_flag == 1)
+        // if writing to tar file add intra-block padding
+        if (tar_flag == 1)
         {
-        if (total_bytes_written % BLOCKSIZE != 0)
-        {
-            additional_size = BLOCKSIZE - (total_bytes_written % BLOCKSIZE);
-        }
-
-        if (additional_size > 0)
-        {
-            unsigned char add_buff[additional_size];
-            my_memset(add_buff, '\0', additional_size);
-
-            while (add_written < additional_size)
+            if (total_bytes_written % BLOCKSIZE != 0)
             {
-                ssize_t written = write(dst_fd, add_buff + add_written, additional_size - add_written);
-                if (written < 0)
+                additional_size = BLOCKSIZE - (total_bytes_written % BLOCKSIZE);
+            }
+
+            if (additional_size > 0)
+            {
+                unsigned char add_buff[additional_size];
+                my_memset(add_buff, '\0', additional_size);
+
+                while (add_written < additional_size)
                 {
-                    print_error("Failure to write padding\n");
-                    return -1;
+                    ssize_t written = write(dst_fd, add_buff + add_written, additional_size - add_written);
+                    if (written < 0)
+                    {
+                        print_error("Failure to write padding\n");
+                        return -1;
+                    }
+                    add_written += written;
                 }
-                add_written += written;
             }
         }
-        }
-   }
+    }
     int write_size = (long int)total_bytes_written + (long int)add_written;
 
     return write_size;
