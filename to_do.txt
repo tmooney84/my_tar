@@ -1,4 +1,26 @@
-To-Do Friday 2/13/25
+To-Do Tuesday 3/3/25                  ./my_tar -xf test.tar
+
+it looks like the files within sub-directories are not writing correctly>>> need to see
+if creating a file like this "directory1/file1.txt" will put it automatically in directory1
+or if there is something else that needs to be done.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+***!!!NEED TO CLOSE FILE DESCRIPTORS THROUGHOUT THE PROGRAM!!!
+
 
 process_entry:
 bugs??? >>> I think the tar file should be able to be extracted with tar
@@ -7,6 +29,7 @@ build out -cf
 make sure that it is differentiated from -rt and overwrites everything if the file already exists
 ***Ensure headers are written as 512-byte blocks (not strings) to preserve NULs
 
+***ensure process_entry() is uses binary not macros for checking file types
 
 build out -rf
 make sure that it adds to the end
@@ -18,6 +41,12 @@ build out -tf
 -from there locate the name using standard format
 
 build out -xf
+
+*** start with line 585 and get block counting logic 
+in place to then start copying file and return number of 
+blocks used by the file??? how to account for the zeroed 
+blocks and record...
+
 1) Read header (512 bytes).
 2) Extract filename (name field).
 3) Check typeflag (if it's '0', it's a file).
@@ -25,6 +54,9 @@ build out -xf
 5) Read size bytes from tar and write to the file.
 6) Skip padding (to next 512-byte boundary).
 7) Restore metadata (mode, timestamps).
+
+
+***ensure extract_process_entry() is uses binary not macros for checking file types
 
 -use the ustar to build file name
 -restore meta data (look to chatgpt list for mode, date modified)
