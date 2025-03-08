@@ -82,6 +82,7 @@ int append_file_data(int tar_fd, char *append_file);
 int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
 int extract_tar(char **names, int num_names); // int v_flag
+int add_zeros(int tar_fd);
 int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names);
 int extract_process_entry(header *f_header, int tar_fd, int current_block);
 int process_entry(char *path, int tar_fd);
@@ -130,7 +131,6 @@ int main(int argc, char **argv)
     //*********************need to count the number of dashes and redo this section!!! tar -c -f  versus  tar -cf name.tar file_name
     else if (my_strcmp(argv[1], "-cf") == 0)
     {
-        // int fd = open_file("zzz.txt", O_CREAT | O_RDWR, 0664);
         int fd = create_tar(names, num_names);
         if (fd < 0)
         {
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
         //  }
 
         // TEST file_header_fns.c IN main:
-        //tester_main(argv[2]);
+        tester_main(argv[2]);
         return 0;
     }
     // else if(my_strcmp(argv[1], "-cvf")==0)
@@ -156,6 +156,86 @@ int main(int argc, char **argv)
     else if (my_strcmp(argv[1], "-rf") == 0)
     {
         // archive_tar(argc, argv);
+        /*
+             need to go to end of file
+
+
+             and write in each block to see if it is a file, to find
+             last file. if it is a file, need to go to the end of its size add in the new file
+             and with intra-block padding and then make sure the two zero blocks and record padding
+             are correct
+
+             with "uf" same idea but first need to see if the file name is already contained in the
+             tar. If it is, need to compare the time modified numbers ... remember that the time modified
+             will be in the struct timespec[2] >>> the second element, times[1],tv.sec.
+
+         // struct timespec times[2];
+         // file_stats.st_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
+         // times[1].tv_sec = file_stats.st_mtime;
+
+
+        append_tar(names, num_names, 'r')
+             // for update: append_tar(names, num_names, 'u') // int v_flag
+
+        int append_tar(char **names, int num_names, char op_flag) // int v_flag
+     {
+         int tar_fd;
+
+         char *tar_name = names[0];
+         // printf("tar_name: %s\n", tar_name);
+         tar_fd = create_tar_file(tar_name, 'c');
+
+         if (tar_fd < 0)
+         {
+             return -1;
+         }
+
+         for (int i = 1; i < num_names; i++)
+         {
+             // printf("test\n");
+             if (process_entry(names[i], tar_fd) < 0)
+             {
+                 my_printf("Error processing %s into tar file\n", names[i]);
+                 return 1;
+             }
+         }
+
+
+    if(add_zeros(tar_fd) < 0)
+    {
+        print_error("Unable to add zero padding");
+        return -1;
+    }
+
+        close(tar_fd);
+
+         return 0;
+     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+         */
     }
     else if (my_strcmp(argv[1], "-tf") == 0)
     {
@@ -335,7 +415,6 @@ int open_tar(char **names) // int v_flag
     char *tar_name = names[0];
     // printf("tar_name: %s\n", tar_name);
 
-    // vvvvvvvvvvvvvvvvvvv// keep this name
     tar_fd = create_tar_file(tar_name, 't');
     return tar_fd;
 }
@@ -493,8 +572,19 @@ int create_tar(char **names, int num_names) // int v_flag
         }
     }
 
-    // add_zeros(tar_fd);
+    if(add_zeros(tar_fd) < 0)
+    {
+        print_error("Unable to add zero padding");
+        return -1;
+    }
 
+    close(tar_fd);
+
+    return 0;
+}
+
+int add_zeros(int tar_fd)
+{
     struct stat tar_stats;
 
     if (fstat(tar_fd, &tar_stats) == -1)
@@ -533,8 +623,6 @@ int create_tar(char **names, int num_names) // int v_flag
 
     tar_size = (long int)tar_stats.st_size;
     // printf("tar_size after padding added: %ld\n", tar_size);
-
-    close(tar_fd);
 
     return 0;
 }
