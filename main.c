@@ -190,16 +190,42 @@ int main(int argc, char **argv)
              return -1;
          }
 
-         for (int i = 1; i < num_names; i++)
-         {
-             // printf("test\n");
-             if (process_entry(names[i], tar_fd) < 0)
-             {
-                 my_printf("Error processing %s into tar file\n", names[i]);
-                 return 1;
-             }
-         }
+        int prev_error_flag = 0;
 
+         for (int i = 1; i < num_names; i++)
+        {
+
+        
+        int newest_version_flag = 1;
+
+        if(op_flag == 'u')
+        {
+            //loop through tar to see if file exists
+           file_search_loop >>> for each name campare against names[1] to names[last]
+           {
+             if(names[i] mod time < contained modified time) 
+            {
+                newest_version_flag = 0;
+                break;            
+            }
+           } 
+           
+            }
+         
+        
+            
+            
+            if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r' || newest_version_flag))
+            {
+                my_printf("Error processing %s into tar file\n", names[i]);
+                prev_error_flag = 1;
+            }
+        }
+
+    if (prev_error_flag = 1)
+    {
+        previous_errors();
+    }
 
     if(add_zeros(tar_fd) < 0)
     {
@@ -214,11 +240,81 @@ int main(int argc, char **argv)
 
 
 
+---------------------------------------------------------
 
+int print_included_tar_contents(int tar_fd, char **names, int num_names)
+{
+    struct stat tar_stats;
+    if (fstat(tar_fd, &tar_stats) == -1)
+    {
+        print_error("Unable to stat tar\n");
+        return -1;
+    }
 
+    long int tar_size = (long int)tar_stats.st_size;
 
+    // make sure at beginning of tar_fd
+    if (lseek(tar_fd, 0, SEEK_SET) < 0)
+    {
+        print_error("Unable to lseek file\n");
+        return -1;
+    }
 
+    unsigned char header_buffer[512];
+    int read_size = 0;
 
+    int *names_log = (int *)malloc(num_names * sizeof(int));
+    if (!names_log)
+    {
+        failed_alloc();
+        return -1;
+    }
+    my_memset(names_log, 0, num_names * sizeof(int));
+
+    while (read_size < tar_size)
+    {
+        my_memset(header_buffer, 0, sizeof(header_buffer));
+        int n = 0;
+
+        n = read(tar_fd, header_buffer, 512);
+        if ((n < 0) && n != 512)
+        {
+            print_error("Unable to read magic tar file\n");
+            return -1;
+        }
+        read_size += n;
+
+        struct header *f_header = (struct header *)header_buffer;
+
+        // Extracting the entire tar file
+        if ((f_header->magic[0] == 'u' &&
+             f_header->magic[1] == 's' &&
+             f_header->magic[2] == 't' &&
+             f_header->magic[3] == 'a' &&
+             f_header->magic[4] == 'r' &&
+             f_header->magic[5] == ' '))
+        {
+
+            if (num_names == 1)
+            {
+                my_printf("%s\n", f_header->name);
+            }
+
+            else if (num_names > 1)
+            {
+                for (int i = 1; i < num_names; i++)
+                {
+                    if (my_strcmp(names[i], f_header->name) == 0)
+                    {
+                        my_printf("%s\n", names[i]);
+                        names_log[i] = 1;
+                    }
+                }
+            }
+        }
+    }
+
+---------------------------------------------------------
 
 
 
@@ -562,17 +658,24 @@ int create_tar(char **names, int num_names) // int v_flag
         return -1;
     }
 
+    int prev_error_flag = 0;
+
     for (int i = 1; i < num_names; i++)
     {
         // printf("test\n");
         if (process_entry(names[i], tar_fd) < 0)
         {
             my_printf("Error processing %s into tar file\n", names[i]);
-            return 1;
+            prev_error_flag = 1;
         }
     }
 
-    if(add_zeros(tar_fd) < 0)
+    if (prev_error_flag = 1)
+    {
+        previous_errors();
+    }
+
+    if (add_zeros(tar_fd) < 0)
     {
         print_error("Unable to add zero padding");
         return -1;
