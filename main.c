@@ -183,7 +183,7 @@ int main(int argc, char **argv)
 
          char *tar_name = names[0];
          // printf("tar_name: %s\n", tar_name);
-         tar_fd = create_tar_file(tar_name, 'c');
+         tar_fd = create_tar_file(tar_name, op_flag);
 
          if (tar_fd < 0)
          {
