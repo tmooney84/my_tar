@@ -175,7 +175,7 @@ int main(int argc, char **argv)
             return 1;
         }
     }
-    // else if(my_strcmp(argv[1], "-tvf")==0)
+    // else if(my_strcmp(argv[1], "-tvf") == 0)
     //     {
     //         t_flag = 1;
     //         v_flag = 1;
@@ -194,7 +194,7 @@ int main(int argc, char **argv)
             return -1;
         }
     }
-    // else if(my_strcmp(argv[1], "-xvf")==0)
+    // else if(my_strcmp(argv[1], "-xvf") == 0)
     //     {
     //         x_flag = 1;
     //         v_flag = 1;
@@ -351,7 +351,7 @@ int print_included_tar_contents(int tar_fd, char **names, int num_names)
     }
 
     long int tar_size = (long int)tar_stats.st_size;
-    
+
     // make sure at beginning of tar_fd
     if (lseek(tar_fd, 0, SEEK_SET) < 0)
     {
@@ -369,7 +369,6 @@ int print_included_tar_contents(int tar_fd, char **names, int num_names)
         return -1;
     }
     my_memset(names_log, 0, num_names * sizeof(int));
-
 
     while (read_size < tar_size)
     {
@@ -402,10 +401,9 @@ int print_included_tar_contents(int tar_fd, char **names, int num_names)
 
             else if (num_names > 1)
             {
-
                 for (int i = 1; i < num_names; i++)
                 {
-                    if (names[i] == f_header->name)
+                    if (my_strcmp(names[i], f_header->name) == 0)
                     {
                         my_printf("%s\n", names[i]);
                         names_log[i] = 1;
@@ -415,23 +413,26 @@ int print_included_tar_contents(int tar_fd, char **names, int num_names)
         }
     }
 
-    int missing_names_flag = 0;
-    for (int j = 1; j < num_names; j++)
+    if (num_names > 1)
     {
-        if (names_log[j] == 0)
+        int missing_names_flag = 0;
+        for (int j = 1; j < num_names; j++)
         {
-            file_not_found_error(names[j]);
-            missing_names_flag = 1;
+            if (names_log[j] == 0)
+            {
+                file_not_found_error(names[j]);
+                missing_names_flag = 1;
+            }
+        }
+        if (missing_names_flag)
+        {
+            previous_errors();
         }
     }
-    if (missing_names_flag)
-    {
-        previous_errors();
-    }
 
-free(names_log);
-close(tar_fd);
-return 0;
+    free(names_log);
+    close(tar_fd);
+    return 0;
 }
 
 int create_tar_file(char *tar_name, char op_flag)

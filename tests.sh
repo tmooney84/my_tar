@@ -179,11 +179,19 @@ rm my_printtar.txt printtar.txt
 
 echo "------------------------------------------------------------------"
 
-echo "TEST 5: tar -tf test.tar with functional additional args"
+echo "TEST 6: tar -tf test.tar with functional and non-functional additional args"
 
+echo ""
+
+echo "./my_tar -tf test.tar file1.txt wrongfile.txt:"
 ./my_tar -tf test.tar file1.txt wrongfile.txt | tee my_printtar.txt
 
+echo ""
+
+echo "tar -tf test.tar file1.txt wrongfile.txt:"
 tar -tf test.tar file1.txt wrongfile.txt | tee printtar.txt
+
+echo ""
 
 echo "diff ./my_tar -tf test.tar file1.txt vs. tar -tf test.tar"
 diff my_printtar.txt printtar.txt && echo "Files match!" || echo "Files differ!"
