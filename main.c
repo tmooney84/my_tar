@@ -184,7 +184,6 @@ int main(int argc, char **argv)
          char *tar_name = names[0];
          // printf("tar_name: %s\n", tar_name);
          tar_fd = create_tar_file(tar_name, op_flag);
-
          if (tar_fd < 0)
          {
              return -1;
@@ -192,57 +191,9 @@ int main(int argc, char **argv)
 
         int prev_error_flag = 0;
 
-         for (int i = 1; i < num_names; i++)
-        {
-
-        
-        int newest_version_flag = 1;
-
-        if(op_flag == 'u')
-        {
-            //loop through tar to see if file exists
-           file_search_loop >>> for each name campare against names[1] to names[last]
-           {
-             if(names[i] mod time < contained modified time) 
-            {
-                newest_version_flag = 0;
-                break;            
-            }
-           } 
-           
-            }
-         
-        
-            
-            
-            if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r' || newest_version_flag))
-            {
-                my_printf("Error processing %s into tar file\n", names[i]);
-                prev_error_flag = 1;
-            }
-        }
-
-    if (prev_error_flag = 1)
-    {
-        previous_errors();
-    }
-
-    if(add_zeros(tar_fd) < 0)
-    {
-        print_error("Unable to add zero padding");
-        return -1;
-    }
-
-        close(tar_fd);
-
-         return 0;
-     }
 
 
-
----------------------------------------------------------
-
-int print_included_tar_contents(int tar_fd, char **names, int num_names)
+int name_found_in_tar_contents(int tar_fd, char **names, int num_names)
 {
     struct stat tar_stats;
     if (fstat(tar_fd, &tar_stats) == -1)
@@ -297,7 +248,8 @@ int print_included_tar_contents(int tar_fd, char **names, int num_names)
 
             if (num_names == 1)
             {
-                my_printf("%s\n", f_header->name);
+                print_error("my_tar command needs additional arguments to add files to tar file.");
+                return -1; 
             }
 
             else if (num_names > 1)
@@ -313,6 +265,102 @@ int print_included_tar_contents(int tar_fd, char **names, int num_names)
             }
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+
+        if(op_flag == 'u')
+         {
+        int newest_version_flag = 1;
+        
+        //create struct that contains the name, newest, used
+        
+        typedef struct 
+        {
+            char name[255];
+            int newest_version;
+            int file_exists;  
+        }File_To_Update;
+       
+        each.newest_version = 1;
+        each.file_exists = 0;
+
+        //check to see if the files exist in file system
+
+        for (int i = 1; i < num_names; i++)
+        {
+            //will need to use logic similar to process_entry
+            with struct direct *entry to search through current
+            directory to see if name of file / directory exists
+        }
+
+       //search for them in the tar ... keep directory logic in mind as
+        while(current_block < total_blocks)
+        {
+       //ustar >>> f_header->name found
+
+        for (int i = 1; i < num_names; i++)
+        {
+            //loop through tar to see if file exists
+            {
+                if (my_strcmp(names[i], f_header->name) == 0)
+                {
+                    if(names[i] mod time < contained modified time) 
+                        {
+                            newest_version_flag = 0;
+                            break;            
+                        }
+                }   
+                
+            } 
+           
+         }
+        }
+         
+
+        
+         
+        
+            
+            
+            if (process_entry(names[i], tar_fd) < 0 && (newest_version_flag || op_flag == 'r'))
+            {
+                my_printf("Error processing %s into tar file\n", names[i]);
+                prev_error_flag = 1;
+            }
+        }
+
+    if (prev_error_flag = 1)
+    {
+        previous_errors();
+    }
+
+    if(add_zeros(tar_fd) < 0)
+    {
+        print_error("Unable to add zero padding");
+        return -1;
+    }
+
+        close(tar_fd);
+
+         return 0;
+     }
+
+
+
+---------------------------------------------------------
 
 ---------------------------------------------------------
 
