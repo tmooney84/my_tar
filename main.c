@@ -362,7 +362,7 @@ int main(int argc, char **argv)
                 print_error("my_tar command needs additional arguments to add files to tar file.");
                 return -1; 
             }
-
+        
             else if (num_names > 1)
             {
                 //create struct
