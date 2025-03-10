@@ -55,6 +55,7 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #define TGNMLEN 32
 #define PREFIXSIZE 155
 #define BLOCKSIZE 512
+#define MAX_FILENAME 255
 
 #define PATH_MAX 4096
 // better to use a union? padding needed?
@@ -191,10 +192,58 @@ int main(int argc, char **argv)
 
         int prev_error_flag = 0;
 
+typedef struct{
+            int key;    
+            char name[255];
+            int newest_version_flag;
+            int file_exists_flag;
+} File_Entry;
+
+typedef struct {
+        File_Entry **buckets;
+        size_t num_buckets; 
+}
+
+
+Hashtable *create_table(size_t num_buckets)
+{
+        Hashtable *table = malloc(sizeof(Hashtable));
+        table->num_buckets = num_buckets
+        table->buckets = calloc(num_buckets, sizeof(File_Entry *))
+}
+
+add_element(Entry file_info)
+
+
+
+int hash_fn(char * name)
+{
+    int sum = 0;
+
+    for(int i = 0; i < my_strlen(name); i++)
+    {
+        int sum += (int)name[i];        
+    }
+        return sum % 10;
+}
+
+//add + collision linked list logic
 
 
 int name_found_in_tar_contents(int tar_fd, char **names, int num_names)
 {
+        //will make the element numbers one different from cli to account for tar file name
+    //Entry file_update_lookup[num_names-1];    
+    Entry file_update_lookup[10]; >>> for hash table    
+        
+    for(int i = 1; i < num_names; i++)
+    {
+        my_strncpy(file_update_lookup[i-1].name, names[i], MAX_FILENAME);
+        int file_update_lookup[i-1].newest_version_flag = 1;
+        int file_update_lookup[i-1].file_exists_flag = 0;
+        hash_fn(file_update_lookup[i-1],name)
+        }
+
     struct stat tar_stats;
     if (fstat(tar_fd, &tar_stats) == -1)
     {
@@ -254,6 +303,11 @@ int name_found_in_tar_contents(int tar_fd, char **names, int num_names)
 
             else if (num_names > 1)
             {
+                //create struct
+         
+               
+                
+            
                 for (int i = 1; i < num_names; i++)
                 {
                     if (my_strcmp(names[i], f_header->name) == 0)
@@ -287,17 +341,7 @@ int name_found_in_tar_contents(int tar_fd, char **names, int num_names)
         
         //create struct that contains the name, newest, used
         
-        typedef struct 
-        {
-            char name[255];
-            int newest_version;
-            int file_exists;  
-        }File_To_Update;
-       
-        each.newest_version = 1;
-        each.file_exists = 0;
-
-        //check to see if the files exist in file system
+                //check to see if the files exist in file system
 
         for (int i = 1; i < num_names; i++)
         {
