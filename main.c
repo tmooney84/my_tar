@@ -70,6 +70,10 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 void flag_error();
 void file_error(char *file_name);
 void failed_alloc();
+void append_error();
+void tarball_error(char *tar_name);
+void file_not_found_error(char *file_name);
+void previous_errors();
 void print_string_array(char **all_names, int num_names);
 void free_string_array(char **names, int num_names);
 header *fill_header_info(char *file);
@@ -94,6 +98,7 @@ int map_file_metadata(header *f_header, int fd);
 int map_dir_metadata(header *f_header, char *file_name);
 size_t parse_octal(char *str, size_t max_len);
 char *parse_dir_slash(char *file_name);
+int archive_tar(char **names, int num_names, char op_flag); // int v_flag
 
 // tar -czf -t >>> will throw error
 // parse the files but if already c_flag, etc. is 1 then file_error(argv[i])
@@ -146,7 +151,7 @@ int main(int argc, char **argv)
         //  }
 
         // TEST file_header_fns.c IN main:
-        //tester_main(argv[2]);
+        // tester_main(argv[2]);
         return 0;
     }
 
@@ -155,58 +160,55 @@ int main(int argc, char **argv)
     //         v_flag = 1;
     //         create_tar(argc, argv, v_flag);
     //     }
-    
+
     else if (my_strcmp(argv[1], "-rf") == 0)
     {
         char op_flag = 'r';
-        archive_tar(names, num_names, op_flag);
-    
-        
-  
-    
+        if(archive_tar(names, num_names, op_flag) < 0)
+        {
+            print_error("Unable to archive files");
+            return -1;
+        }
+    }
+
+    // archive_tar(argc, argv);
+    /*
+         need to go to end of file
 
 
+         and write in each block to see if it is a file, to find
+         last file. if it is a file, need to go to the end of its size add in the new file
+         and with intra-block padding and then make sure the two zero blocks and record padding
+         are correct
+
+         with "uf" same idea but first need to see if the file name is already contained in the
+         tar. If it is, need to compare the time modified numbers ... remember that the time modified
+         will be in the struct timespec[2] >>> the second element, times[1],tv.sec.
+
+     // struct timespec times[2];
+     // file_stats.st_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
+     // times[1].tv_sec = file_stats.st_mtime;
 
 
+    append_tar(names, num_names, 'r')
+         // for update: append_tar(names, num_names, 'u') // int v_flag
 
-        // archive_tar(argc, argv);
-        /*
-             need to go to end of file
+    int append_tar(char **names, int num_names, char op_flag) // int v_flag
+ {
+     int tar_fd;
 
-
-             and write in each block to see if it is a file, to find
-             last file. if it is a file, need to go to the end of its size add in the new file
-             and with intra-block padding and then make sure the two zero blocks and record padding
-             are correct
-
-             with "uf" same idea but first need to see if the file name is already contained in the
-             tar. If it is, need to compare the time modified numbers ... remember that the time modified
-             will be in the struct timespec[2] >>> the second element, times[1],tv.sec.
-
-         // struct timespec times[2];
-         // file_stats.st_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
-         // times[1].tv_sec = file_stats.st_mtime;
-
-
-        append_tar(names, num_names, 'r')
-             // for update: append_tar(names, num_names, 'u') // int v_flag
-
-        int append_tar(char **names, int num_names, char op_flag) // int v_flag
+     char *tar_name = names[0];
+     // printf("tar_name: %s\n", tar_name);
+     tar_fd = create_tar_file(tar_name, op_flag);
+     if (tar_fd < 0)
      {
-         int tar_fd;
+         return -1;
+     }
 
-         char *tar_name = names[0];
-         // printf("tar_name: %s\n", tar_name);
-         tar_fd = create_tar_file(tar_name, op_flag);
-         if (tar_fd < 0)
-         {
-             return -1;
-         }
-
-        int prev_error_flag = 0;
+    int prev_error_flag = 0;
 
 // typedef struct{
-//             int key;    
+//             int key;
 //             char name[MAX_FILENAME];
 //             int newest_version_flag;
 //             int file_exists_flag;
@@ -215,7 +217,7 @@ int main(int argc, char **argv)
 
 // typedef struct {
 //         File_Entry **buckets;
-//         size_t num_buckets; 
+//         size_t num_buckets;
 // }
 
 // Hashtable *create_table(size_t num_buckets)
@@ -230,12 +232,12 @@ int main(int argc, char **argv)
 // int add_entry(File_Entry *entry, Hashtable *table)
 // {
 //     //unsigned char *hdr_data = (unsigned char *)hdr;
-        
+
 //     File_Entry *table_data = (File_Entry *)table;
 
 //     if(table_data[entry->key] == NULL)
 //         {
-//             table_data[entry->key] = entry; 
+//             table_data[entry->key] = entry;
 //         }
 
 //     else if(table_data[entry->key] != NULL)
@@ -245,11 +247,11 @@ int main(int argc, char **argv)
 
 //            while(iterator != NULL)
 //            {
-//             iterator = iterator->next; 
+//             iterator = iterator->next;
 //            }
 //             iterator->next = entry;
 //         }
-    
+
 //     else
 //     {
 //         print_error("Unable to add name to hash table");
@@ -278,7 +280,7 @@ int main(int argc, char **argv)
 
 //     for(int i = 0; i < my_strlen(name); i++)
 //     {
-//         int sum += (int)name[i];        
+//         int sum += (int)name[i];
 //     }
 //         return sum % num_buckets;
 // }
@@ -295,92 +297,92 @@ int main(int argc, char **argv)
 //         if(entry == NULL)
 //         {
 //             failed_malloc();
-//             return -1; 
+//             return -1;
 //         }
 //         entry->key = hash_fn(names[i], num_buckets);
 //         my_strncpy(entry[i-1]->name, names[i], MAX_FILENAME);
 //         entry->newest_version_flag = 1;
 //         entry->file_exists_flag = 0;
 //         entry->next = NULL;
-       
+
 //         add_entry(entry, table);
 //         }
 
-    struct stat tar_stats;
-    if (fstat(tar_fd, &tar_stats) == -1)
+struct stat tar_stats;
+if (fstat(tar_fd, &tar_stats) == -1)
+{
+    print_error("Unable to stat tar\n");
+    return -1;
+}
+
+long int tar_size = (long int)tar_stats.st_size;
+
+// make sure at beginning of tar_fd
+if (lseek(tar_fd, 0, SEEK_SET) < 0)
+{
+    print_error("Unable to lseek file\n");
+    return -1;
+}
+
+unsigned char header_buffer[512];
+int read_size = 0;
+
+int *names_log = (int *)malloc(num_names * sizeof(int));
+if (!names_log)
+{
+    failed_alloc();
+    return -1;
+}
+my_memset(names_log, 0, num_names * sizeof(int));
+
+while (read_size < tar_size)
+{
+    my_memset(header_buffer, 0, sizeof(header_buffer));
+    int n = 0;
+
+    n = read(tar_fd, header_buffer, 512);
+    if ((n < 0) && n != 512)
     {
-        print_error("Unable to stat tar\n");
+        print_error("Unable to read magic tar file\n");
         return -1;
     }
+    read_size += n;
 
-    long int tar_size = (long int)tar_stats.st_size;
+    struct header *f_header = (struct header *)header_buffer;
 
-    // make sure at beginning of tar_fd
-    if (lseek(tar_fd, 0, SEEK_SET) < 0)
+    // Extracting the entire tar file
+    if ((f_header->magic[0] == 'u' &&
+         f_header->magic[1] == 's' &&
+         f_header->magic[2] == 't' &&
+         f_header->magic[3] == 'a' &&
+         f_header->magic[4] == 'r' &&
+         f_header->magic[5] == ' '))
     {
-        print_error("Unable to lseek file\n");
-        return -1;
-    }
 
-    unsigned char header_buffer[512];
-    int read_size = 0;
-
-    int *names_log = (int *)malloc(num_names * sizeof(int));
-    if (!names_log)
-    {
-        failed_alloc();
-        return -1;
-    }
-    my_memset(names_log, 0, num_names * sizeof(int));
-
-    while (read_size < tar_size)
-    {
-        my_memset(header_buffer, 0, sizeof(header_buffer));
-        int n = 0;
-
-        n = read(tar_fd, header_buffer, 512);
-        if ((n < 0) && n != 512)
+        if (num_names == 1)
         {
-            print_error("Unable to read magic tar file\n");
+            print_error("my_tar command needs additional arguments to add files to tar file.");
             return -1;
         }
-        read_size += n;
 
-        struct header *f_header = (struct header *)header_buffer;
-
-        // Extracting the entire tar file
-        if ((f_header->magic[0] == 'u' &&
-             f_header->magic[1] == 's' &&
-             f_header->magic[2] == 't' &&
-             f_header->magic[3] == 'a' &&
-             f_header->magic[4] == 'r' &&
-             f_header->magic[5] == ' '))
+        else if (num_names > 1)
         {
+            //create struct
 
-            if (num_names == 1)
+
+
+
+            for (int i = 1; i < num_names; i++)
             {
-                print_error("my_tar command needs additional arguments to add files to tar file.");
-                return -1; 
-            }
-        
-            else if (num_names > 1)
-            {
-                //create struct
-         
-               
-                
-            
-                for (int i = 1; i < num_names; i++)
+                if (my_strcmp(names[i], f_header->name) == 0)
                 {
-                    if (my_strcmp(names[i], f_header->name) == 0)
-                    {
-                        my_printf("%s\n", names[i]);
-                        names_log[i] = 1;
-                    }
+                    my_printf("%s\n", names[i]);
+                    names_log[i] = 1;
                 }
             }
         }
     }
+}
 
 
 
@@ -395,99 +397,98 @@ int main(int argc, char **argv)
 
 
 
-        
 
-    //     if(op_flag == 'u')
-    //      {
-    //     int newest_version_flag = 1;
-        
-    //     //create struct that contains the name, newest, used
-        
-    //             //check to see if the files exist in file system
 
-    //     for (int i = 1; i < num_names; i++)
-    //     {
-    //         //will need to use logic similar to process_entry
-    //         with struct direct *entry to search through current
-    //         directory to see if name of file / directory exists
-    //     }
+//     if(op_flag == 'u')
+//      {
+//     int newest_version_flag = 1;
 
-    //    //search for them in the tar ... keep directory logic in mind as
-    //     while(current_block < total_blocks)
-    //     {
-    //    //ustar >>> f_header->name found
+//     //create struct that contains the name, newest, used
 
-    //     for (int i = 1; i < num_names; i++)
-    //     {
-    //         //loop through tar to see if file exists
-    //         {
-    //             if (my_strcmp(names[i], f_header->name) == 0)
-    //             {
-    //                 if(names[i] mod time < contained modified time) 
-    //                     {
-    //                         newest_version_flag = 0;
-    //                         break;            
-    //                     }
-    //             }   
-                
-    //         } 
-           
-    //      }
-    //     }
-         
+//             //check to see if the files exist in file system
 
-        
-         
-        
-            
-            //!!!need to update newest_version_flag placeholder 
-            //if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r' || newest_version_flag))
-            if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r')  //temporary for 'r'
-            {
-                my_printf("Error processing %s into tar file\n", names[i]);
-                prev_error_flag = 1;
-            }
+//     for (int i = 1; i < num_names; i++)
+//     {
+//         //will need to use logic similar to process_entry
+//         with struct direct *entry to search through current
+//         directory to see if name of file / directory exists
+//     }
+
+//    //search for them in the tar ... keep directory logic in mind as
+//     while(current_block < total_blocks)
+//     {
+//    //ustar >>> f_header->name found
+
+//     for (int i = 1; i < num_names; i++)
+//     {
+//         //loop through tar to see if file exists
+//         {
+//             if (my_strcmp(names[i], f_header->name) == 0)
+//             {
+//                 if(names[i] mod time < contained modified time)
+//                     {
+//                         newest_version_flag = 0;
+//                         break;
+//                     }
+//             }
+
+//         }
+
+//      }
+//     }
+
+
+
+
+
+
+        //!!!need to update newest_version_flag placeholder
+        //if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r' || newest_version_flag))
+        if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r')  //temporary for 'r'
+        {
+            my_printf("Error processing %s into tar file\n", names[i]);
+            prev_error_flag = 1;
         }
-
-    // if (prev_error_flag = 1)
-    // {
-    //     previous_errors();
-    // }
-
-    // if(add_zeros(tar_fd) < 0)
-    // {
-    //     print_error("Unable to add zero padding");
-    //     return -1;
-    // }
-
-        close(tar_fd);
-
-         return 0;
-     }
-
-
-
----------------------------------------------------------
-
----------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-         */
     }
+
+// if (prev_error_flag = 1)
+// {
+//     previous_errors();
+// }
+
+// if(add_zeros(tar_fd) < 0)
+// {
+//     print_error("Unable to add zero padding");
+//     return -1;
+// }
+
+    close(tar_fd);
+
+     return 0;
+ }
+
+
+
+---------------------------------------------------------
+
+---------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+     */
     else if (my_strcmp(argv[1], "-tf") == 0)
     {
         // t_flag = 1;
@@ -557,78 +558,70 @@ int main(int argc, char **argv)
     return 0;
 }
 
-
-
-
-
-
-
-
 int archive_tar(char **names, int num_names, char op_flag) // int v_flag
-        {
-         int tar_fd;
+{
+    int tar_fd;
 
-         char *tar_name = names[0];
-         // printf("tar_name: %s\n", tar_name);
-         tar_fd = create_tar_file(tar_name, op_flag);
-         if (tar_fd < 0)
-         {
-             return -1;
-         }
+    char *tar_name = names[0];
+    // printf("tar_name: %s\n", tar_name);
+    tar_fd = create_tar_file(tar_name, op_flag);
+    if (tar_fd < 0)
+    {
+        return -1;
+    }
 
-        int prev_error_flag = 0;
-    
-        struct stat tar_stats;
+    int prev_error_flag = 0;
+
+    struct stat tar_stats;
     if (fstat(tar_fd, &tar_stats) == -1)
     {
         print_error("Unable to stat tar\n");
         return -1;
     }
 
-    long int tar_size = (long int)tar_stats.st_size;
+    //long int tar_size = (long int)tar_stats.st_size;
 
-    // make sure at beginning of tar_fd
-    // if (lseek(tar_fd, 0, SEEK_SET) < 0)
-    // {
-    //     print_error("Unable to lseek file\n");
-    //     return -1;
-    // }
-   
     unsigned char header_buffer[512];
-    int read_size = 0;
+    //int read_size = 0;
 
-    //begin search for last file at end of file
+    // begin search for last file at end of file
     if (lseek(tar_fd, 0, SEEK_END) < 0)
     {
         print_error("Unable to lseek file\n");
         return -1;
     }
 
-        int *names_log = (int *)malloc(num_names * sizeof(int));
-    if (!names_log)
-    {
-        failed_alloc();
-        return -1;
-    }
-    my_memset(names_log, 0, num_names * sizeof(int));
+    // keep track of which of inputed names were used
+    //  int *names_log = (int *)malloc(num_names * sizeof(int));
+    //  if (!names_log)
+    //  {
+    //      failed_alloc();
+    //      return -1;
+    //  }
+    // my_memset(names_log, 0, num_names * sizeof(int));
 
-    while (read_size > 0)
+    // need to check if names exist
+
+    off_t current_location;
+
+    while (current_location > 1024) //this should take it all the way to 0 write to-> 512
     {
         my_memset(header_buffer, 0, sizeof(header_buffer));
         int n = 0;
 
-    if (lseek(tar_fd, -1024, SEEK_CUR) < 0)  //is 1024 needed in order for this to seek back correctly?
-    {
-        print_error("Unable to lseek file\n");
-        return -1;
-    }
+        // it is guarenteed that the last block will be a zero block so should be ok to start with -1024
+        if (lseek(tar_fd, -1024, SEEK_CUR) < 0) // is 1024 needed in order for this to seek back correctly?
+        {
+            print_error("Unable to lseek file\n");
+            return -1;
+        }
         n = read(tar_fd, header_buffer, 512);
         if ((n < 0) && n != 512)
         {
             print_error("Unable to read magic tar file\n");
             return -1;
         }
-        read_size += n;
+        //read_size += n;
 
         struct header *f_header = (struct header *)header_buffer;
 
@@ -640,75 +633,65 @@ int archive_tar(char **names, int num_names, char op_flag) // int v_flag
              f_header->magic[4] == 'r' &&
              f_header->magic[5] == ' '))
         {
+            size_t file_size = parse_octal(f_header->size, sizeof(f_header->size));
+            size_t num_blocks = file_size % BLOCKSIZE == 0 ? file_size / BLOCKSIZE : file_size / BLOCKSIZE + 1;
+            lseek(tar_fd, num_blocks * BLOCKSIZE, SEEK_CUR);
 
-            if (num_names == 1)
+            for(int i = 1; i < num_names; i++)
             {
-                print_error("my_tar command needs additional arguments to add files to tar file.");
-                return -1; 
-            }
-
-            else if (num_names > 1)
+            if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r')) // temporary for 'r'
             {
-                //create struct
-         
-               
-                
-            
-                for (int i = 1; i < num_names; i++)
-                {
-                    if (my_strcmp(names[i], f_header->name) == 0)
-                    {
-                        my_printf("%s\n", names[i]);
-                        names_log[i] = 1;
-                    }
-                }
-            }
-        }
-    }       
-        
-         //!!!need to update newest_version_flag placeholder 
-            //if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r' || newest_version_flag))
-            if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r')  //temporary for 'r'
-            {
-                my_printf("Error processing %s into tar file\n", names[i]);
+                file_error(names[i]);  
                 prev_error_flag = 1;
             }
+
+            }
+            if (prev_error_flag == 1)
+            {
+                previous_errors();
+            }
+
+            if(add_zeros(tar_fd) < 0)
+            {
+                print_error("Unable to add zero padding");
+                return -1;
+            }
         }
+        
+        current_location = lseek(tar_fd, 0, SEEK_CUR);
+    }
+    close(tar_fd);
+    return 0;
+}
 
-    // if (prev_error_flag = 1)
-    // {
-    //     previous_errors();
-    // }
+            //         if (num_names == 1)
+            //         {
+            //             print_error("my_tar command needs additional arguments to add files to tar file.");
+            //             return -1;
+            //         }
 
-    // if(add_zeros(tar_fd) < 0)
-    // {
-    //     print_error("Unable to add zero padding");
-    //     return -1;
-    // }
+            //         else if (num_names > 1)
+            //         {
+            //             // create struct
 
-        close(tar_fd);
+            //             for (int i = 1; i < num_names; i++)
+            //             {
+            //                 if (my_strcmp(names[i], f_header->name) == 0)
+            //                 {
+            //                     my_printf("%s\n", names[i]);
+            //                     names_log[i] = 1;
+            //                 }
+            //             }
+            //         }
+            //     }
+            // }
 
-         return 0;
-     }
+            //!!!need to update newest_version_flag placeholder
+            // if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r' || newest_version_flag))
 
+            //>>> go to the next block after size of file
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            
 void flag_error()
 {
     print_error("tar: You must specify one of the '-Acdtrux', '--delete' or '--test-label' options\nTry 'tar --help' or 'tar --usage' for more information.\n");
