@@ -1546,17 +1546,19 @@ size_t parse_octal(char *str, size_t max_len)
 
 off_t write_padding(int tar_fd, int total_required_padding)
 {
-
-// pre_pad logic works for append but not create dirs
-    /**************************************************** */
-    off_t pre_pad_location = lseek(tar_fd, 0, SEEK_CUR);
-    printf("pre_pad_location: %ld", pre_pad_location);
-
-    char zero_buff[total_required_padding];
+char zero_buff[total_required_padding];
     my_memset(zero_buff, 0, total_required_padding);
 
     ssize_t bytes_written = 0;
-//******************************************************** */
+/*
+ pre_pad logic works for append but not create dirs
+********************************************************
+
+    off_t pre_pad_location = lseek(tar_fd, 0, SEEK_CUR);
+    printf("pre_pad_location: %ld", pre_pad_location);
+
+********************************************************
+*/
 
 /*
     need to find the end of data>>> SEEK_END then go back 512 until header found with ustar
@@ -1579,7 +1581,6 @@ off_t write_padding(int tar_fd, int total_required_padding)
 
 
 
-/*
 //searching from end of file to find end written info with ustar then file size rounded to
 //nearest 512
 //-------------------------------------------
@@ -1625,14 +1626,15 @@ off_t current_location = lseek(tar_fd, 0, SEEK_END);
              f_header->magic[5] == ' '))
         {
             current_location = lseek(tar_fd, 0, SEEK_CUR);
-            int size = parse_oct(f_header->size);
+            int size = parse_octal(f_header->size, sizeof(f_header->size));
+   
             if(size % BLOCKSIZE == 0)
             {
-            lseek(tar_fd, current_location + size, SEEK_SET);
+                lseek(tar_fd, current_location + size, SEEK_SET);
             } 
            else
            {
-            lseek(current_location + size + (BLOCKSIZE - size));  
+                lseek(tar_fd, current_location + size + (BLOCKSIZE - size), SEEK_SET);  
            }
             
            off_t now_local = lseek(tar_fd, 0, SEEK_CUR); 
@@ -1646,12 +1648,7 @@ off_t current_location = lseek(tar_fd, 0, SEEK_END);
             return -1;
         }
     }
-
-
-
-
-    */
-
+//**********************************************************************
 
     while (bytes_written < total_required_padding)
     {
@@ -1666,9 +1663,9 @@ off_t current_location = lseek(tar_fd, 0, SEEK_END);
     }
     // printf("bytes_written: %zu\n", bytes_written);
     
-    off_t current_location = lseek(tar_fd, 0, SEEK_CUR);
+    off_t end_location = lseek(tar_fd, 0, SEEK_CUR);
     
-    return current_location;
+    return end_location;
 }
 
 off_t append_file_data(int tar_fd, char *append_file)

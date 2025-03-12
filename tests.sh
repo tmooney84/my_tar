@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 echo "Starting tests.sh..."
@@ -215,11 +214,14 @@ echo "additional file" > add1.txt
 
 echo "TEST 7: tar -rf my_arch.tar add1.txt  -vs-   tar version"
 
-tar -cf my_arch.tar reg1.txt reg2.txt reg
+# tar -cf my_arch.tar reg1.txt reg2.txt reg  ### normal tar version
+
+###
+./my_tar -cf my_arch.tar reg1.txt reg2.txt reg
 
 tar -cf arch.tar reg1.txt reg2.txt reg
 
-
+###
 ./my_tar -rf my_arch.tar add1.txt
 
 tar -rf arch.tar add1.txt
@@ -259,9 +261,10 @@ echo "my_arch.tar output:"
 cat my_arch.tar || exit 1
 
 
-
+###
 rm reg1.txt reg2.txt add1.txt
 
+###
 rm -rf reg
 
 
@@ -276,4 +279,5 @@ cd .. || exits 1
 
 rm file_header_fns.o main.o my_printf.o my_tar print_error.o utils.o
 
+###
 rm -rf test_dir || exit 1
