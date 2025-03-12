@@ -954,6 +954,9 @@ int add_zeros(int tar_fd)
         return -1;
     }
 
+    off_t current_location = lseek(tar_fd, 0, SEEK_CUR);
+    my_printf("entering process entry at this location: %lld", current_location);
+    
     long int tar_size = (long int)tar_stats.st_size;
     // printf("tar_size before padding: %ld\n", tar_size);
 
@@ -1012,7 +1015,6 @@ int process_entry(char *path, int tar_fd)
 
     /*************************************************** */
     current_location = lseek(tar_fd, current_location, SEEK_SET);
-    my_printf("entering process entry at this location: %lld", current_location);
 
     free(hdr);
 
@@ -1024,6 +1026,9 @@ int process_entry(char *path, int tar_fd)
             file_error(path);
             return -1;
         }
+
+    /*************************************************** */
+    current_location = lseek(tar_fd, current_location, SEEK_SET);
     }
 
     else if (S_ISDIR(arg_stats.st_mode))
@@ -1063,7 +1068,10 @@ int process_entry(char *path, int tar_fd)
             }
         }
 
-        closedir(dir);
+    /*************************************************** */
+    current_location = lseek(tar_fd, current_location, SEEK_SET);
+    
+    closedir(dir);
 
         //    if(v_flag) >>> to print the file that was added
         // {
@@ -1071,6 +1079,9 @@ int process_entry(char *path, int tar_fd)
         // }
     }
 
+    /*************************************************** */
+    current_location = lseek(tar_fd, current_location, SEEK_SET);
+    
     return 0;
 }
 
