@@ -1052,7 +1052,7 @@ int process_entry(char *path, int tar_fd)
 
 
     /*************************************************** */
-    current_location = lseek(tar_fd, 0, SEEK_CUR);
+    current_location = lseek(tar_fd, current_location, SEEK_SET);
     my_printf("entering process entry at this location: %lld", current_location);
 
 
@@ -1617,8 +1617,12 @@ int append_file_data(int tar_fd, char *append_file)
     long int tar_size = (long int)tar_stats.st_size;
     // printf("tar_size in append: %ld\n", tar_size);
 
+    /***************************************** */
+    current_location = lseek(tar_fd, 0, SEEK_CUR);
+    my_printf("appending data starting at location:  %lld\n", current_location);
+    
     int append_fd = open(append_file, O_RDONLY);
-
+   
     if (tar_size < BLOCKSIZE)
     {
         print_error("Failure to write file header\n");
@@ -1631,6 +1635,11 @@ int append_file_data(int tar_fd, char *append_file)
         int ts_n;
 
         ts_n = write_file_data(tar_fd, append_fd, f_size, 1);
+
+/********************************************* */
+    current_location = lseek(tar_fd, 0, SEEK_CUR);
+    my_printf("appending data starting at location:  %lld\n", current_location);
+ 
 
         if (ts_n < 0)
         {
@@ -1647,29 +1656,29 @@ int append_file_data(int tar_fd, char *append_file)
 int write_header(header *hdr, int tar_fd)
 {
     unsigned char *hdr_data = (unsigned char *)hdr;
-    size_t bytes_written = 0;
+   // size_t bytes_written = 0;
 
     /********************************************** */
     off_t current_location = lseek(tar_fd, 0, SEEK_CUR);
     printf("current location at start of write_header fn is: %ld", current_location);
 
-    while (bytes_written < BLOCKSIZE)
-    {
+    //while (bytes_written < BLOCKSIZE)
+    //{
         // ssize_t >>> [-1, SIZE_MAX] bytes, if issue returns -1
        // ssize_t written = write(tar_fd, hdr_data + bytes_written, BLOCKSIZE - bytes_written);
-        ssize_t written = write(tar_fd, hdr_data + bytes_written, BLOCKSIZE - bytes_written);
-        if (written < 0)
+        ssize_t written = write(tar_fd, hdr_data, BLOCKSIZE);
+        if (written < BLOCKSIZE)
         {
             print_error("write_header: write failed\n");
             return -1;
         }
-        bytes_written += written;
-    }
+       // bytes_written += written;
+    //}
     // printf("bytes_written: %ld\n", bytes_written);
     // printf("header written\n");
    
     /*************************************************************************** */
-    current_location = lseek(tar_fd, 0, SEEK_CUR);
+    current_location += BLOCKSIZE;
     return current_location;
 }
 
@@ -1680,6 +1689,10 @@ file writes.
 */
 int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
 {
+/*********************************** */
+    off_t current_location = lseek(dst_fd, 0, SEEK_CUR);
+    my_printf("appending data starting at location:  %lld\n", current_location);
+
     // printf("write_file_data starting...\n");
     unsigned char transfer_buff[BLOCKSIZE];
     ssize_t total_bytes_written = 0;
@@ -1689,9 +1702,9 @@ int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
 
     while (1)
     {
-        ssize_t bytes_to_read = 0;
+        //ssize_t bytes_to_read = 0;
         //^^^ replaced with 0
-        // ssize_t bytes_to_read = BLOCKSIZE;
+         ssize_t bytes_to_read = BLOCKSIZE;
 
         // calculates read size
         if (f_size > 0)
@@ -1714,21 +1727,33 @@ int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
         }
 
         // handles partial writes
-        ssize_t bytes_written = 0;
+       // ssize_t bytes_written = 0;
 
-        while (bytes_written < n)
-        {
-            ssize_t written = write(dst_fd, transfer_buff + bytes_written, n - bytes_written);
-            if (written < 0)
-            {
-                print_error("Failure to write file data\n");
-                return -1;
-            }
-            bytes_written += written;
-        }
-        total_bytes_written += n;
+        // while (bytes_written < n)
+        // {
+        //     ssize_t written = write(dst_fd, transfer_buff + bytes_written, n - bytes_written);
+        //     if (written < 0)
+        //     {
+        //         print_error("Failure to write file data\n");
+        //         return -1;
+        //     }
+        //     bytes_written += written;
+        // }
+        // total_bytes_written += n;
 
-        // if writing to tar file add intra-block padding
+            if (write(dst_fd, transfer_buff, n) != n)
+    {
+        print_error("write error\n");
+        return -1;
+    }
+    total_bytes_written += n;
+
+
+/*********************************** */
+    off_t current_location = lseek(dst_fd, 0, SEEK_CUR);
+    my_printf("appending data starting at location:  %lld\n", current_location);
+
+    // if writing to tar file add intra-block padding
         if (tar_flag == 1)
         {
             if (total_bytes_written % BLOCKSIZE != 0)
@@ -1755,6 +1780,10 @@ int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
         }
     }
     int write_size = (long int)total_bytes_written + (long int)add_written;
+
+/*********************************** */
+    current_location = lseek(dst_fd, 0, SEEK_CUR);
+    my_printf("appending data starting at location:  %lld\n", current_location);
 
     return write_size;
 }
