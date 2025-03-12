@@ -83,14 +83,14 @@ int open_file(char *file_name, int flags, int perms);
 int print_included_tar_contents(int tar_fd, char **names, int num_names);
 int create_tar(char **names, int num_names); // int v_flag
 int create_tar_file(char *tar_name, char op_flag);
-int append_file_data(int tar_fd, char *append_file);
+off_t append_file_data(int tar_fd, char *append_file);
 int update_tar(int argc, char **argv);
 int list_tar(int argc, char **argv, int v_flag);
 int extract_tar(char **names, int num_names); // int v_flag
 int add_zeros(int tar_fd);
 int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names);
 int extract_process_entry(header *f_header, int tar_fd, int current_block);
-int process_entry(char *path, int tar_fd);
+off_t process_entry(char *path, int tar_fd);
 int write_header(header *hdr, int tar_fd);
 int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag);
 int write_padding(int tar_fd, int total_required_padding);
@@ -609,10 +609,14 @@ int archive_tar(char **names, int num_names, char op_flag) // int v_flag
     size_t file_size = parse_octal(f_header->size, sizeof(f_header->size));
     size_t num_blocks = file_size % BLOCKSIZE == 0 ? file_size / BLOCKSIZE : file_size / BLOCKSIZE + 1;
     current_location = lseek(tar_fd, current_location + num_blocks * BLOCKSIZE, SEEK_SET);
+    off_t pre_process_location = current_location;
 
     for (int i = 1; i < num_names; i++)
     {
-        if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r')) // temporary for 'r'
+
+        //if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r')) // temporary for 'r'
+       current_location = process_entry(names[i], tar_fd); 
+        if (current_location < pre_process_location && (op_flag == 'r')) // temporary for 'r'
         {
             file_error(names[i]);
             prev_error_flag = 1;
@@ -992,7 +996,7 @@ int add_zeros(int tar_fd)
     return 0;
 }
 
-int process_entry(char *path, int tar_fd)
+off_t process_entry(char *path, int tar_fd)
 {
     /*************************************************** */
     off_t current_location = lseek(tar_fd, 0, SEEK_CUR);
@@ -1021,11 +1025,7 @@ int process_entry(char *path, int tar_fd)
     if (S_ISREG(arg_stats.st_mode))
     {
         // if file to append
-        if (append_file_data(tar_fd, path) != 0)
-        {
-            file_error(path);
-            return -1;
-        }
+        current_location = append_file_data(tar_fd, path);
 
     /*************************************************** */
     current_location = lseek(tar_fd, current_location, SEEK_SET);
@@ -1082,7 +1082,7 @@ int process_entry(char *path, int tar_fd)
     /*************************************************** */
     current_location = lseek(tar_fd, current_location, SEEK_SET);
     
-    return 0;
+    return current_location;
 }
 
 int extract_tar(char **names, int num_names) // int v_flag
@@ -1556,7 +1556,7 @@ int write_padding(int tar_fd, int total_required_padding)
     return 0;
 }
 
-int append_file_data(int tar_fd, char *append_file)
+off_t append_file_data(int tar_fd, char *append_file)
 {
     // printf("append_file_data named %s started!!!!!!\n", append_file);
     //  get file size
@@ -1588,7 +1588,6 @@ int append_file_data(int tar_fd, char *append_file)
 
     /***************************************** */
     current_location = lseek(tar_fd, 0, SEEK_CUR);
-    my_printf("appending data starting at location:  %lld\n", current_location);
 
     int append_fd = open(append_file, O_RDONLY);
 
@@ -1607,7 +1606,6 @@ int append_file_data(int tar_fd, char *append_file)
 
         /********************************************* */
         current_location = lseek(tar_fd, 0, SEEK_CUR);
-        my_printf("appending data starting at location:  %lld\n", current_location);
 
         if (ts_n < 0)
         {
@@ -1618,7 +1616,7 @@ int append_file_data(int tar_fd, char *append_file)
 
     close(append_fd);
     // printf("closed append_fd\n");
-    return 0; // if successful may need conditional logic
+    return current_location; // if successful may need conditional logic
 }
 
 int write_header(header *hdr, int tar_fd)
@@ -1628,7 +1626,6 @@ int write_header(header *hdr, int tar_fd)
 
     /********************************************** */
     off_t current_location = lseek(tar_fd, 0, SEEK_CUR);
-    printf("current location at start of write_header fn is: %ld", current_location);
 
     // while (bytes_written < BLOCKSIZE)
     //{
