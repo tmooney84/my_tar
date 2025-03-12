@@ -198,6 +198,75 @@ diff my_printtar.txt printtar.txt && echo "Files match!" || echo "Files differ!"
 
 rm my_printtar.txt printtar.txt
 
+echo "------------------------------------------------------------------"
+
+echo "TEST 7: tar -rf arch.tar vs. my_arch.tar"
+
+echo "1234567890" > reg1.txt
+
+echo "abcdefghij" > reg2.txt
+
+mkdir reg
+
+echo "0987654321" > reg/test1.txt
+echo "jighfedcba" > reg/test2.txt
+
+echo "additional file" > add1.txt
+
+echo "TEST 7: tar -rf my_arch.tar add1.txt  -vs-   tar version"
+
+tar -cf my_arch.tar reg1.txt reg2.txt reg
+
+tar -cf arch.tar reg1.txt reg2.txt reg
+
+
+./my_tar -rf my_arch.tar add1.txt
+
+tar -rf arch.tar add1.txt
+
+echo "diff hexdump -C arch.tar vs. my_arch.tar"
+diff <(hexdump -C arch.tar) <(hexdump -C my_arch.tar) && echo "Files match!" || echo "Files differ!"
+
+echo ""
+
+echo "diff hexdump -c output:"
+diff <(hexdump -c arch.tar) <(hexdump -c my_arch.tar) && echo "Files match!" || echo "Files differ!"
+
+echo ""
+
+echo ""
+echo ""
+echo "***********************************************************************************"
+echo "arch.tar output:"
+hexdump -C arch.tar || exit 1
+
+echo ""
+echo ""
+echo ""
+echo "***********************************************************************************"
+echo "my_arch.tar output:"
+hexdump -C my_arch.tar || exit 1
+
+echo "***********************************************************************************"
+
+echo ""
+echo ""
+echo ""
+echo "arch.tar output:"
+cat arch.tar || exit 1
+
+echo "my_arch.tar output:"
+cat my_arch.tar || exit 1
+
+
+
+rm reg1.txt reg2.txt add1.txt
+
+rm -rf reg
+
+
+
+
 
 
 

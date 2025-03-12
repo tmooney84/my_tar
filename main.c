@@ -585,7 +585,8 @@ int archive_tar(char **names, int num_names, char op_flag) // int v_flag
     //int read_size = 0;
 
     // begin search for last file at end of file
-    if (lseek(tar_fd, 0, SEEK_END) < 0)
+    off_t current_location = lseek(tar_fd, 0, SEEK_END);
+    if (current_location < 0)
     {
         print_error("Unable to lseek file\n");
         return -1;
@@ -602,15 +603,14 @@ int archive_tar(char **names, int num_names, char op_flag) // int v_flag
 
     // need to check if names exist
 
-    off_t current_location;
-
-    while (current_location > 1024) //this should take it all the way to 0 write to-> 512
+    struct header *f_header;
+    
+    while (current_location >= 0) //this should take it all the way to 0 write to-> 512
     {
         my_memset(header_buffer, 0, sizeof(header_buffer));
         int n = 0;
 
-        // it is guarenteed that the last block will be a zero block so should be ok to start with -1024
-        if (lseek(tar_fd, -1024, SEEK_CUR) < 0) // is 1024 needed in order for this to seek back correctly?
+        if (lseek(tar_fd, -512, SEEK_CUR) < 0) 
         {
             print_error("Unable to lseek file\n");
             return -1;
@@ -623,7 +623,7 @@ int archive_tar(char **names, int num_names, char op_flag) // int v_flag
         }
         //read_size += n;
 
-        struct header *f_header = (struct header *)header_buffer;
+        f_header = (struct header *)header_buffer;
 
         // Extracting the entire tar file
         if ((f_header->magic[0] == 'u' &&
@@ -633,9 +633,21 @@ int archive_tar(char **names, int num_names, char op_flag) // int v_flag
              f_header->magic[4] == 'r' &&
              f_header->magic[5] == ' '))
         {
+        current_location = lseek(tar_fd, 0, SEEK_CUR);
+        break;
+        }
+        
+        current_location = lseek(tar_fd, -512, SEEK_CUR);
+        if (current_location < 0) 
+        {
+            print_error("Unable to lseek file\n");
+            return -1;
+        }
+    
+    }
             size_t file_size = parse_octal(f_header->size, sizeof(f_header->size));
             size_t num_blocks = file_size % BLOCKSIZE == 0 ? file_size / BLOCKSIZE : file_size / BLOCKSIZE + 1;
-            lseek(tar_fd, num_blocks * BLOCKSIZE, SEEK_CUR);
+            current_location = lseek(tar_fd, current_location + num_blocks * BLOCKSIZE, SEEK_SET);
 
             for(int i = 1; i < num_names; i++)
             {
@@ -656,10 +668,7 @@ int archive_tar(char **names, int num_names, char op_flag) // int v_flag
                 print_error("Unable to add zero padding");
                 return -1;
             }
-        }
-        
-        current_location = lseek(tar_fd, 0, SEEK_CUR);
-    }
+    
     close(tar_fd);
     return 0;
 }
@@ -1022,6 +1031,10 @@ int add_zeros(int tar_fd)
 
 int process_entry(char *path, int tar_fd)
 {
+    /*************************************************** */
+    off_t current_location = lseek(tar_fd, 0, SEEK_CUR);
+    my_printf("entering process entry at this location: %lld", current_location);
+    
     struct stat arg_stats;
     if (stat(path, &arg_stats) < 0)
     {
@@ -1029,14 +1042,19 @@ int process_entry(char *path, int tar_fd)
     }
     // tester_main(path);
     header *hdr = fill_header_info(path);
-
-    // printf("tar_fd: %d\n", tar_fd);
     if (!hdr)
     {
         file_error(path);
         return -1;
     }
-    write_header(hdr, tar_fd);
+
+    current_location = write_header(hdr, tar_fd);
+
+
+    /*************************************************** */
+    current_location = lseek(tar_fd, 0, SEEK_CUR);
+    my_printf("entering process entry at this location: %lld", current_location);
+
 
     free(hdr);
 
@@ -1573,6 +1591,10 @@ int append_file_data(int tar_fd, char *append_file)
 {
     // printf("append_file_data named %s started!!!!!!\n", append_file);
     //  get file size
+
+    /*********************************************************************** */
+    off_t current_location = lseek(tar_fd, 0, SEEK_CUR);
+    my_printf("appending data starting at location:  %lld\n", current_location);
     struct stat file_stats;
 
     // what to do about symbolic links lsat and in tar??
@@ -1627,10 +1649,15 @@ int write_header(header *hdr, int tar_fd)
     unsigned char *hdr_data = (unsigned char *)hdr;
     size_t bytes_written = 0;
 
+    /********************************************** */
+    off_t current_location = lseek(tar_fd, 0, SEEK_CUR);
+    printf("current location at start of write_header fn is: %ld", current_location);
+
     while (bytes_written < BLOCKSIZE)
     {
         // ssize_t >>> [-1, SIZE_MAX] bytes, if issue returns -1
-        ssize_t written = write(tar_fd, hdr_data + bytes_written, BLOCKSIZE);
+       // ssize_t written = write(tar_fd, hdr_data + bytes_written, BLOCKSIZE - bytes_written);
+        ssize_t written = write(tar_fd, hdr_data + bytes_written, BLOCKSIZE - bytes_written);
         if (written < 0)
         {
             print_error("write_header: write failed\n");
@@ -1640,7 +1667,10 @@ int write_header(header *hdr, int tar_fd)
     }
     // printf("bytes_written: %ld\n", bytes_written);
     // printf("header written\n");
-    return 0;
+   
+    /*************************************************************************** */
+    current_location = lseek(tar_fd, 0, SEEK_CUR);
+    return current_location;
 }
 
 /*
