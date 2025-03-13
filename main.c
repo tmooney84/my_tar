@@ -198,7 +198,7 @@ int main(int argc, char **argv)
 // typedef struct {
 //         File_Entry **buckets;
 //         size_t num_buckets;
-// }
+// }Hashtable; 
 
 // Hashtable *create_table(size_t num_buckets)
 // {
@@ -209,6 +209,9 @@ int main(int argc, char **argv)
 // }
 
 // //add + collision linked list logic
+
+// build_entry() fn needed? >>> one per file/dir name
+
 // int add_entry(File_Entry *entry, Hashtable *table)
 // {
 //     //unsigned char *hdr_data = (unsigned char *)hdr;
@@ -307,13 +310,13 @@ if (lseek(tar_fd, 0, SEEK_SET) < 0)
 unsigned char header_buffer[512];
 int read_size = 0;
 
-int *names_log = (int *)malloc(num_names * sizeof(int));
-if (!names_log)
-{
-    failed_alloc();
-    return -1;
-}
-my_memset(names_log, 0, num_names * sizeof(int));
+// int *names_log = (int *)malloc(num_names * sizeof(int));
+// if (!names_log)
+// {
+//     failed_alloc();
+//     return -1;
+// }
+// my_memset(names_log, 0, num_names * sizeof(int));
 
 while (read_size < tar_size)
 {
@@ -357,7 +360,8 @@ while (read_size < tar_size)
                 if (my_strcmp(names[i], f_header->name) == 0)
                 {
                     my_printf("%s\n", names[i]);
-                    names_log[i] = 1;
+                    entry[i - 1]->file_exists_flag = 1; >>> need to get to entry
+
                 }
             }
         }
@@ -1455,9 +1459,20 @@ int map_file_metadata(header *f_header, int fd)
     }
     // file_stats.st_size = lseek(fd, 0, SEEK_END); // could do parse_octal(f_header->size, 12);
 
-    // struct timespec times[2];
-    // file_stats.st_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
-    // times[1].tv_sec = file_stats.st_mtime;
+    struct timeval tv[2];
+    time_t mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
+    
+    tv[0].tv_sec = mtime;
+    tv[0].tv_usec = 0;
+    tv[1].tv_sec = mtime;
+    tv[1].tv_usec = 0;
+
+    if(futimes(fd, tv) < 0)
+    {
+        print_error("Unable to set file times\n");
+        return -1;
+    }
+
 
     /* REMEMBER OCT STRING TO INT
    st_mode    chmod()   → Derived from the tar header’s mode and typeflag
