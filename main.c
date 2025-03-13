@@ -30,6 +30,13 @@ Errors handling Errors will be written on STDERR.
 File not found (provided file is: i_don_t_exist): my_tar: i_don_t_exist: Cannot stat: No such file or directory
 
 Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open tarball.tar
+
+
+
+// tar -czf -t >>> will throw error
+// parse the files but if already c_flag, etc. is 1 then file_error(argv[i])
+// if t then cannot have c, r, t, u, x ... but needs f
+// -f to parse file correctly
 */
 
 #include <stdio.h>
@@ -100,11 +107,6 @@ size_t parse_octal(char *str, size_t max_len);
 char *parse_dir_slash(char *file_name);
 int archive_tar(char **names, int num_names, char op_flag); // int v_flag
 
-// tar -czf -t >>> will throw error
-// parse the files but if already c_flag, etc. is 1 then file_error(argv[i])
-// if t then cannot have c, r, t, u, x ... but needs f
-// -f to parse file correctly
-
 int main(int argc, char **argv)
 {
    int num_flag_args = 1; // for now is 1 to make it work
@@ -134,13 +136,6 @@ int main(int argc, char **argv)
 
        return 0;
     }
-
-    // else if(my_strcmp(argv[1], "-cvf")==0)
-    //     {
-    //         v_flag = 1;
-    //         create_tar(argc, argv, v_flag);
-    //     }
-
     else if (my_strcmp(argv[1], "-rf") == 0)
     {
         char op_flag = 'r';
@@ -488,12 +483,6 @@ while (read_size < tar_size)
             return 1;
         }
     }
-    // else if(my_strcmp(argv[1], "-tvf") == 0)
-    //     {
-    //         t_flag = 1;
-    //         v_flag = 1;
-    //         f_flag = 1;
-    //     }
     else if (my_strcmp(argv[1], "-uf") == 0)
     {
     
@@ -507,13 +496,6 @@ while (read_size < tar_size)
             return -1;
         }
     }
-    // else if(my_strcmp(argv[1], "-xvf") == 0)
-    //     {
-    //         x_flag = 1;
-    //         v_flag = 1;
-    //         f_flag = 1;
-    //     }
-
     else
     {
         flag_error();
@@ -1870,6 +1852,4 @@ int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
         printf("final_location after writing file data: %ld", final_location);
     return write_size;
 }
-// // adding verbose to these just have a print and with ifv_flag)
 
-// // zip would be additional logic>>> some form of api
