@@ -39,6 +39,7 @@ typedef struct
     char name[MAX_FILENAME];
     int newest_version_flag;
     int file_exists_flag;
+    time_t mod_time;
     File_Entry *next;
 } File_Entry;
 
@@ -79,7 +80,7 @@ int add_entry(File_Entry *entry, Hashtable *table)
 {
     // unsigned char *hdr_data = (unsigned char *)hdr;
 
-    //File_Entry *table_data = (File_Entry *)table;
+    // File_Entry *table_data = (File_Entry *)table;
 
     if (table->buckets[entry->key] == NULL)
     {
@@ -108,18 +109,30 @@ int add_entry(File_Entry *entry, Hashtable *table)
 }
 
 // free table data
-void free_table(Hashtable *table)
+int free_table(Hashtable *table)
 {
     if (table == NULL)
     {
-        return;
+        print_error("Table does not exist.");
+        return -1;
     }
     for (size_t i = 0; i < table->num_buckets; i++)
     {
-        // is it * or not
-        free(table->buckets[i]); //>>> need to traverse and free each pointer
+        File_Entry *head = table->buckets[i];
+        File_Entry *tmp;
+
+        while (head != NULL)
+        {
+            tmp = head;
+            head = head->next;
+            free(tmp);
+        }
     }
+    
+    free(table->buckets);
     free(table);
+    
+    return 0;
 }
 
 int hash_fn(char *name, int num_buckets)
@@ -153,10 +166,11 @@ Hashtable *build_prompt_names_table(char **names, int num_names)
         entry->newest_version_flag = 1;
         entry->file_exists_flag = 0;
         entry->next = NULL;
+        entry->mod_time = 0;
 
-        if(add_entry(entry, prompt_names_table) < 0)
+        if (add_entry(entry, prompt_names_table) < 0)
         {
-            //print_error("Unable to add entry to hash table");
+            // print_error("Unable to add entry to hash table");
             printf("Unable to add entry to hash table");
             return -1;
         }
@@ -233,10 +247,10 @@ while (read_size < tar_size)
                     {}
                     else
                     {
-                        prompt_names_table->buckets[i]->newest_version_flag = 0; 
+                        prompt_names_table->buckets[i]->newest_version_flag = 0;
                     }
 
-                    break; 
+                    break;
                 }
             }
         }
@@ -248,80 +262,83 @@ while (read_size < tar_size)
 // Checking file age vs. f_header file
 /****************************************************** */
 /*
+//NOT SURE IF I WILL NEED TO BREAK OUT THE LOGIC HERE OR IF CAN JUST BE PART OF THE ORIGINAL CONDITOINAL
 
-int check_file_age(f_header->m_time, char *prompt_names_table->buckets[i]->name)
-{
+    time_t infile_mtime = (time_t)parse_octal(f_header->mtime, 12);
+
+    time_t append_file
+
 
 }
+*/
 
-int check_files_exist(Hashtable names_table)
+int get_mod_times(Hashtable *table)
 {
-    int num_prompt_names = table->num_prompt_names;
-    names_table 
+    if (table == NULL)
+    {
+        print_error("Hashtable does not exist\n");
+        return -1;
+    }
 
-    DIR *dir;
-    struct dirent *entry
+    for (int i = 0; i < table->num_buckets; i++)
+    {
+        if (table->buckets[i]->file_exists_flag == 1)
+        {
+            struct stat file_stats;
+            if (stat(table->buckets[i]->name, &file_stats) == -1)
+            {
+                file_error(table->buckets[i]->name);
+                return -1;
+            }
+            table->buckets[i]->mod_time = file_stats.st_mtime;
+        }
+    }
 
+    return 0;
+}
 
-
-//DO I NEED DIRECTORY PATH?????!!!!
-
-//char **return_directory(const char *dir_path, int a_flag, int file_count)
-int check_files_exist(Hashtable names_table)
+// THIS IS WHERE I LEFT OFF!!!
+int check_files_exist(Hashtable *table)
 {
+    if(table == NULL)
+    {
+        print_error("Hashtable does not exist\n");
+        return -1;
+    }
+
     int num_prompt_names = table->num_prompt_names;
-    
+
     DIR *dir;
     struct dirent *entry;
 
-    if (num_prompt_names <= 0) 
+    if (num_prompt_names <= 0)
     {
         print_error("No names found in names_table.\n");
         return -1;
     }
 
-    if ((dir = opendir(dir_path)) == NULL)
+    //if ((dir = opendir(dir_path)) == NULL)
+    if ((dir = opendir(".")) == NULL)
     {
         perror("Error opening directory");
-        free(names);
-        return NULL;
+        return -1;
     }
 
     while ((entry = readdir(dir)) != NULL)
     {
         for(int i = 0; i < num_prompt_names; i++)
         {
-        if(my_strcmp(table->buckets[i]->name, entry) == 0)
-        {
-            table->buckets[i]->file_exists_flag = 1;
+            if((table->buckets[i]->file_exists_flag == 0) && my_strcmp(table->buckets[i]->name, entry->d_name) == 0)
+            {
+                table->buckets[i]->file_exists_flag = 1;
+                break;
+            }
         }
-        }
-        closedir(dir);
-        return 0;
     }
+
     closedir(dir);
-
-    string_quickSort(names, 0, file_count - 1);
-
-    return names;
+    return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-    }
-
-
-*/
 
 
 int main()
@@ -346,13 +363,19 @@ int main()
     }
 
     Hashtable *prompt_names_table = build_prompt_names_table(names, num_names);
-    if(check_files_exist(prompt_names_table) < 0)
+    if (check_files_exist(prompt_names_table) < 0)
     {
         print_error("Error checking whether files indicated in hashtable exist.\n");
         return -1;
     }
-        
-    printf("num_buckets: %d\n num_prompt_names: %d\n",prompt_names_table->num_buckets, prompt_names_table->num_prompt_names);
+
+    if (get_mod_times(prompt_names_table) < 0)
+    {
+        print_error("Error finding modification times for prompt file names.\n");
+        return -1;
+    }
+
+    printf("num_buckets: %d\n num_prompt_names: %d\n", prompt_names_table->num_buckets, prompt_names_table->num_prompt_names);
 
     for (int i = 0; i < num_names; i++)
     {
@@ -362,7 +385,6 @@ int main()
         printf("bucket[%d] newest_version_flag: %d\n", i, prompt_names_table->buckets[i]->newest_version_flag);
         printf("\n");
     }
-
 
     for (int i = 0; i < 5; i++)
     {
