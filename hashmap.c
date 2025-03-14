@@ -400,6 +400,8 @@ int check_files_exist(Hashtable *table)
     return 0;
 }
 
+//char **get_update_names(int tar_fd, char **names)
+//vvv
 int main()
 {
 
@@ -467,6 +469,31 @@ int main()
             }
         }
     }
+
+    char **check_newest_in_tar(tar_fd, table)
+
+    //char ** newest_names = create_newest_names(table)
+    
+    //cycle through tar and once name found check names on hashtable
+    //if match then compare modified flag (need to 
+    //convert the tar file mod to time_t) them compare and change
+    // newest_flag accordingly... 
+    
+    
+    // resize_newest_names(newest_names) 
+    // use vetted names number for malloc initial space
+    // cycle through and for each name and check if newest is 1
+    //resize malloc after n++ the number of names that are new
+    //^^^ make sure that memory for the names that are truncated 
+    //are freed
+
+
+
+
+
+
+
+
 
     // CYCLE THRU UMAGICS TO COMPARE DATE MODIFIED
     // using hash function to find bucket and then

@@ -485,7 +485,13 @@ while (read_size < tar_size)
     }
     else if (my_strcmp(argv[1], "-uf") == 0)
     {
-    
+    // char op_flag = 'u';
+    //
+    //     if (archive_tar(vetted_names, num_names, op_flag) < 0)
+    //     {
+    //         print_error("Unable to archive files");
+    //         return -1;
+    //     } 
     
     }
     else if (my_strcmp(argv[1], "-xf") == 0)
