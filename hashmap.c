@@ -305,7 +305,6 @@ int get_mod_times(Hashtable *table)
     return 0;
 }
 
-// THIS IS WHERE I LEFT OFF!!!
 int check_files_exist(Hashtable *table)
 {
     if (table == NULL)
@@ -331,35 +330,38 @@ int check_files_exist(Hashtable *table)
     // checks if file paths exist relative to working directory
     if ((dir = opendir(".")) == NULL)
     {
-      //!!! print_error("Error opening directory"); 
+        //!!! print_error("Error opening directory");
         perror("Error opening directory");
         return -1;
     }
 
-    //need to switch the logic so that when file found cycle through the directory to see
-    //if it exists...
-    while ((entry = readdir(dir)) != NULL)
+    int n = 0;
+
+    // traverse through each "potential file name" in the hash map and see if each exists in current directory
+    for (int i = 0; i < num_buckets && n < num_prompt_names; i++)
     {
-        // traversing hashmap to check that prompted file names exist in current directory
-        int n = 0;
-
-        for (int i = 0; i < num_buckets && n < num_prompt_names; i++)
+        if (table->buckets[i] != NULL)
         {
-            if (table->buckets[i] != NULL)
-            {
-                File_Entry *head = table->buckets[i];
-                File_Entry *iterator = head;
+            File_Entry *iterator = table->buckets[i];
 
-                while (iterator != NULL)
-                { //!!! my_strcmp
-                    if ((iterator->file_exists_flag == 0) && strcmp(iterator->name, entry->d_name) == 0)
+            while (iterator != NULL)
+            {
+                if (iterator->file_exists_flag == 0)
+                {
+                    rewinddir(dir);
+                    while ((entry = readdir(dir)) != NULL)
                     {
-                        iterator->file_exists_flag = 1;
-                        n++;
-                        break;
+                        //!!! my_strcmp
+                        if (strcmp(iterator->name, entry->d_name) == 0)
+                        {
+                            iterator->file_exists_flag = 1;
+                            n++;
+                            break;
+                        }
                     }
-                    iterator = iterator->next;
                 }
+
+                iterator = iterator->next;
             }
         }
     }
@@ -421,8 +423,7 @@ int main()
     {
         if (table->buckets[i] != NULL)
         {
-            File_Entry *head = table->buckets[i];
-            File_Entry *iterator = head;
+            File_Entry *iterator = table->buckets[i];
 
             while (iterator != NULL)
             {
