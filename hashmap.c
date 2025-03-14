@@ -402,6 +402,8 @@ int check_files_exist(Hashtable *table)
 
 int main()
 {
+
+    //MIMICS THE char **names THAT WOULD BE PASSED THROUGH
     int num_names = 6;
     char **names = malloc(sizeof(char *) * num_names);
 
@@ -410,12 +412,12 @@ int main()
         names[i] = malloc((NAMESIZE - 1) * sizeof(char));
     }
     //!!!mystrncpy
-    strncpy(names[0], "test.tar", NAMESIZE - 1);
-    strncpy(names[1], "file1.tar", NAMESIZE - 1);
-    strncpy(names[2], "file2.tar", NAMESIZE - 1);
-    strncpy(names[3], "file3.tar", NAMESIZE - 1);
+    strncpy(names[0], "test.txt", NAMESIZE - 1);
+    strncpy(names[1], "file1.txt", NAMESIZE - 1);
+    strncpy(names[2], "file2.txt", NAMESIZE - 1);
+    strncpy(names[3], "file3.txt", NAMESIZE - 1);
     strncpy(names[4], "dir4", NAMESIZE - 1);
-    strncpy(names[5], "file3.tar", NAMESIZE - 1);
+    strncpy(names[5], "file3.txt", NAMESIZE - 1);
 
     printf("Inputted string names: \n");
 
