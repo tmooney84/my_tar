@@ -49,7 +49,7 @@ typedef struct Hashtable
 {
     File_Entry **buckets;
     size_t num_buckets;
-    int num_prompt_names;
+    int num_vetted_names;
 } Hashtable;
 
 //     int append_tar(char **names, int num_names, char op_flag) // int v_flag
@@ -80,9 +80,8 @@ Hashtable *create_table(size_t num_buckets)
 
 int add_entry(File_Entry *entry, Hashtable *table)
 {
-    // unsigned char *hdr_data = (unsigned char *)hdr;
-
-    // File_Entry *table_data = (File_Entry *)table;
+    int duplicate_flag = 0;
+    // IF ENTRY IS A DUPLICATE, FREE THE ENTRY???
 
     if (table->buckets[entry->key] == NULL)
     {
@@ -96,9 +95,23 @@ int add_entry(File_Entry *entry, Hashtable *table)
 
         while (iterator != NULL)
         {
+            //!!! my_strcmp
+            if (strcmp(iterator->name, entry->name) == 0)
+            {
+                //!!! just for testing
+                printf("entry: %s is a duplicate.\n", entry->name);
+                duplicate_flag = 1;
+                break;
+               // free(entry);// >>> DELETE probably better to do in calling fn
+            }
+
             iterator = iterator->next;
         }
-        iterator->next = entry;
+
+        if (duplicate_flag == 0)
+        {
+            iterator->next = entry;
+        }
     }
 
     else
@@ -108,7 +121,7 @@ int add_entry(File_Entry *entry, Hashtable *table)
         return -1;
     }
 
-    return 0;
+    return duplicate_flag;
 }
 
 // free table data
@@ -157,7 +170,8 @@ Hashtable *build_prompt_names_table(char **names, int num_names)
     int num_prompt_names = num_names - 1;
     int num_buckets = 10; // for hashing_fn()
     Hashtable *names_table = create_table(num_buckets);
-    names_table->num_prompt_names = num_prompt_names;
+    names_table->num_vetted_names = num_prompt_names;
+
     for (int i = 0; i < num_prompt_names; i++)
     {
         File_Entry *entry = malloc(sizeof(File_Entry));
@@ -175,11 +189,17 @@ Hashtable *build_prompt_names_table(char **names, int num_names)
         entry->next = NULL;
         entry->mod_time = 0;
 
-        if (add_entry(entry, names_table) < 0)
+        int duplicate_flag = add_entry(entry, names_table);
+        if (duplicate_flag < 0)
         {
             // print_error("Unable to add entry to hash table");
-            printf("Unable to add entry to hash table");
+            printf("Unable to vet entry in hash table");
             return NULL;
+        }
+        else if (duplicate_flag == 1)
+        {
+            --names_table->num_vetted_names;
+            free(entry); 
         }
     }
     return names_table;
@@ -288,17 +308,28 @@ int get_mod_times(Hashtable *table)
         return -1;
     }
 
-    for (int i = 0; i < table->num_buckets; i++)
+    int n = 0;
+    for (int i = 0; i < table->num_buckets && n < table->num_vetted_names; i++)
     {
-        if (table->buckets[i]->file_exists_flag == 1)
+        if (table->buckets[i] != NULL)
         {
-            struct stat file_stats;
-            if (stat(table->buckets[i]->name, &file_stats) == -1)
+            File_Entry *iterator = table->buckets[i];
+
+            while (iterator != NULL)
             {
-                //*** file_error(table->buckets[i]->name);
-                return -1;
+                    if (iterator->file_exists_flag == 1)
+                    {
+                        struct stat file_stats;
+                        if (stat(iterator->name, &file_stats) == -1)
+                        {
+                            //*** file_error(table->buckets[i]->name);
+                            return -1;
+                        }
+                        iterator->mod_time = file_stats.st_mtime;
+                    }
+                n++;
+                iterator = iterator->next;
             }
-            table->buckets[i]->mod_time = file_stats.st_mtime;
         }
     }
 
@@ -314,13 +345,13 @@ int check_files_exist(Hashtable *table)
         return -1;
     }
 
-    int num_prompt_names = table->num_prompt_names;
+    int num_names = table->num_vetted_names;
     int num_buckets = table->num_buckets;
 
     DIR *dir;
     struct dirent *entry;
 
-    if (num_prompt_names <= 0)
+    if (num_names <= 0)
     {
         // print_error("No names found in names_table.\n");
         printf("No names found in names_table.\n");
@@ -338,7 +369,7 @@ int check_files_exist(Hashtable *table)
     int n = 0;
 
     // traverse through each "potential file name" in the hash map and see if each exists in current directory
-    for (int i = 0; i < num_buckets && n < num_prompt_names; i++)
+    for (int i = 0; i < num_buckets && n < num_names; i++)
     {
         if (table->buckets[i] != NULL)
         {
@@ -371,7 +402,7 @@ int check_files_exist(Hashtable *table)
 
 int main()
 {
-    int num_names = 5;
+    int num_names = 6;
     char **names = malloc(sizeof(char *) * num_names);
 
     for (int i = 0; i < num_names; i++)
@@ -384,10 +415,13 @@ int main()
     strncpy(names[2], "file2.tar", NAMESIZE - 1);
     strncpy(names[3], "file3.tar", NAMESIZE - 1);
     strncpy(names[4], "dir4", NAMESIZE - 1);
+    strncpy(names[5], "file3.tar", NAMESIZE - 1);
+
+    printf("Inputted string names: \n");
 
     for (int i = 0; i < num_names; i++)
     {
-        printf("names[%d]: %s", i, names[i]);
+        printf("names[%d]: %s\n", i, names[i]);
     }
 
     Hashtable *table = build_prompt_names_table(names, num_names);
@@ -405,21 +439,12 @@ int main()
         return -1;
     }
 
-    printf("num_buckets: %ld\n num_prompt_names: %d\n", table->num_buckets, table->num_prompt_names);
-
-    // for (int i = 0; i < num_names; i++)
-    // {
-    //     printf("bucket[%d] key: %d\n", i, table->buckets[i]->key);
-    //     printf("bucket[%d] name: %s\n", i, table->buckets[i]->name);
-    //     printf("bucket[%d] file_exists_flag: %d\n", i, table->buckets[i]->file_exists_flag);
-    //     printf("bucket[%d] newest_version_flag: %d\n", i, table->buckets[i]->newest_version_flag);
-    //     printf("bucket[%d] mod_time: %lld\n", i, (long long int)table->buckets[i]->mod_time);
-    //     printf("\n");
-    // }
+    printf("num_buckets: %ld\nnum_vetted_names: %d\n", table->num_buckets, table->num_vetted_names);
+    printf("\n");
 
     int n = 0;
 
-    for (int i = 0; i < table->num_buckets && n < table->num_prompt_names; i++)
+    for (int i = 0; i < table->num_buckets && n < table->num_vetted_names; i++)
     {
         if (table->buckets[i] != NULL)
         {
@@ -450,7 +475,7 @@ int main()
     // need to include the file not found print error functionality; I believe it should
     // have the two layers of errors... functionality that I should be able to copy
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < num_names; i++)
     {
         free(names[i]);
     }
