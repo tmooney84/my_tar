@@ -319,7 +319,7 @@ while (read_size < tar_size)
     int n = 0;
 
     n = read(tar_fd, header_buffer, 512);
-    if ((n < 0) && n != 512)
+    if ((n < 0) || n != 512)
     {
         print_error("Unable to read magic tar file\n");
         return -1;
@@ -606,7 +606,7 @@ int archive_tar(char **names, int num_names, char op_flag) // int v_flag
             return -1;
         }
         n = read(tar_fd, header_buffer, 512);
-        if ((n < 0) && n != 512)
+        if ((n < 0) || n != 512)
         {
             print_error("Unable to read magic tar file\n");
             return -1;
@@ -847,7 +847,7 @@ int print_included_tar_contents(int tar_fd, char **names, int num_names)
         int n = 0;
 
         n = read(tar_fd, header_buffer, 512);
-        if ((n < 0) && n != 512)
+        if ((n < 0) || n != 512)
         {
             print_error("Unable to read magic tar file\n");
             return -1;
@@ -1236,7 +1236,7 @@ int extract_all_contents(int tar_fd, char **names_to_extract, int num_ex_names)
 
         // if ((n = read(tar_fd + (current_block * 512), header_buffer, 512) < 0) && n != 512)
         n = read(tar_fd, header_buffer, 512);
-        if ((n < 0) && n != 512)
+        if ((n < 0) || n != 512)
         {
             print_error("Unable to read magic tar file\n");
             return -1;
@@ -1651,7 +1651,7 @@ off_t current_location = lseek(tar_fd, 0, SEEK_END);
             return -1;
         }
         n = read(tar_fd, header_buffer, 512);
-        if ((n < 0) && n != 512)
+        if ((n < 0) || n != 512)
         {
             print_error("Unable to read magic tar file\n");
             return -1;
