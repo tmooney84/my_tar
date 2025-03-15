@@ -17,6 +17,7 @@
 #include "print_error.h"
 #include "file_header_fns.h"
 #include "hashmap.h"
+//#include "main.c" >>>> ????
 
 #define NAMESIZE 100
 #define PREFIXSIZE 155
@@ -60,104 +61,104 @@ Hashtable *create_table(int num_buckets)
 
 //*********************************EXACT COPIES FROM main.c **********************/
 //*********************************EXACT COPIES FROM main.c **********************/
-size_t parse_octal(char *str, size_t max_len)
-{
-    size_t num = 0;
-    size_t i = 0;
-    for (i = 0; i < max_len && str[i] >= '0' && str[i] <= '7'; ++i)
-    {
-        num *= 8;
-        num += str[i] - '0';
-    }
+// size_t parse_octal(char *str, size_t max_len)
+// {
+//     size_t num = 0;
+//     size_t i = 0;
+//     for (i = 0; i < max_len && str[i] >= '0' && str[i] <= '7'; ++i)
+//     {
+//         num *= 8;
+//         num += str[i] - '0';
+//     }
 
-    return num;
-}
-void failed_alloc()
-{
-    print_error("Failed to allocate memory.\n");
-}
-void tarball_error(char *tar_name)
-{
-    print_error("my_tar: Cannot open %s\n", tar_name);
-}
+//     return num;
+// }
+// void failed_alloc()
+// {
+//     print_error("Failed to allocate memory.\n");
+// }
+// void tarball_error(char *tar_name)
+// {
+//     print_error("my_tar: Cannot open %s\n", tar_name);
+// }
 
-int open_file(char *file_name, int flags, int perms)
-{
-    int fd;
-    fd = open(file_name, flags, perms);
-    if (fd < 0)
-    {
-        tarball_error(file_name);
-        return -1;
-    }
-    return fd;
-}
+// int open_file(char *file_name, int flags, int perms)
+// {
+//     int fd;
+//     fd = open(file_name, flags, perms);
+//     if (fd < 0)
+//     {
+//         tarball_error(file_name);
+//         return -1;
+//     }
+//     return fd;
+// }
 
-int create_tar_file(char *tar_name, char op_flag)
-{
-    int tar_fd;
+// int create_tar_file(char *tar_name, char op_flag)
+// {
+//     int tar_fd;
 
-    // create tar file:
-    if (op_flag == 'c')
-    {
-        tar_fd = open_file(tar_name, O_RDWR | O_CREAT | O_TRUNC, TAR_PERMS);
-    }
+//     // create tar file:
+//     if (op_flag == 'c')
+//     {
+//         tar_fd = open_file(tar_name, O_RDWR | O_CREAT | O_TRUNC, TAR_PERMS);
+//     }
 
-    else if (op_flag == 't')
-    {
-        tar_fd = open_file(tar_name, O_RDONLY, TAR_PERMS);
-    }
+//     else if (op_flag == 't')
+//     {
+//         tar_fd = open_file(tar_name, O_RDONLY, TAR_PERMS);
+//     }
 
-    else if (op_flag == 'r' || op_flag == 'u')
-    {
-        tar_fd = open_file(tar_name, O_RDWR | O_CREAT, TAR_PERMS);
-        // tar_fd = open_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
-    }
-    // tar_fd = open_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
-    // printf("tar_fd: %d\n", tar_fd);
+//     else if (op_flag == 'r' || op_flag == 'u')
+//     {
+//         tar_fd = open_file(tar_name, O_RDWR | O_CREAT, TAR_PERMS);
+//         // tar_fd = open_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
+//     }
+//     // tar_fd = open_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
+//     // printf("tar_fd: %d\n", tar_fd);
 
-    else
-    {
-        tarball_error(tar_name);
-    }
+//     else
+//     {
+//         tarball_error(tar_name);
+//     }
 
-    if (tar_fd < 0)
-    {
-        tarball_error(tar_name);
-        return -1;
-    }
-    return tar_fd;
-}
+//     if (tar_fd < 0)
+//     {
+//         tarball_error(tar_name);
+//         return -1;
+//     }
+//     return tar_fd;
+// }
 
-// frees pointers related to string array
-void free_string_array(char **names, int num_names)
-{
-    if (names == NULL)
-    {
-        return;
-    }
+// // frees pointers related to string array
+// void free_string_array(char **names, int num_names)
+// {
+//     if (names == NULL)
+//     {
+//         return;
+//     }
 
-    for (int i = 0; i < num_names; i++)
-    {
-        free(names[i]); // Free each dynamically allocated string
-    }
+//     for (int i = 0; i < num_names; i++)
+//     {
+//         free(names[i]); // Free each dynamically allocated string
+//     }
 
-    free(names);
-}
-void previous_errors()
-{
-    print_error("tar: Exiting with failure status due to previous errors\n");
-}
+//     free(names);
+// }
+// void previous_errors()
+// {
+//     print_error("tar: Exiting with failure status due to previous errors\n");
+// }
 
-void file_not_found_error(char *file_name)
-{
-    print_error("tar: %s: Not found in archive\n", file_name);
-}
+// void file_not_found_error(char *file_name)
+// {
+//     print_error("tar: %s: Not found in archive\n", file_name);
+// }
 
-void file_error(char *file_name)
-{
-    print_error("my_tar: %s: Cannot stat: No such file or directory\n", file_name);
-}
+// void file_error(char *file_name)
+// {
+//     print_error("my_tar: %s: Cannot stat: No such file or directory\n", file_name);
+// }
 
 //**********************************************************************************************/
 //**********************************************************************************************/
@@ -625,42 +626,52 @@ int print_error_names(Hashtable *table)
 }
 
 //int main()
-Hashtable *get_update_names(int tar_fd, char **names)
+Hashtable *get_update_names(char **input_names, int input_num_names)
 {
 
     /*********************MIMICS tar_fd*************************************/
     int tar_fd;
 
-    char *tar_name = malloc(NAMESIZE * sizeof(char));
-    if (!tar_name)
+    char *tar_name = input_names[0];
+    if(tar_name == NULL)
     {
-        return -1;
+        print_error("Error with get_update_names input parameters.");
     }
-    strcpy(tar_name, "u.tar");
-    // printf("tar_name: %s\n", tar_name);
+   
     tar_fd = create_tar_file(tar_name, 'u');
     if (tar_fd < 0)
     {
-        return -1;
+        tarball_error(tar_name);
+        return NULL;
     }
+
+    char **names = input_names + 1;
+    int num_names = input_num_names - 1;
+
     /************************************************************************/
-
-    /**********MIMICS THE char **names THAT WOULD BE PASSED THROUGH**********/
-    int num_names = 7;
-    char **names = malloc(sizeof(char *) * num_names);
-
-    for (int i = 0; i < num_names; i++)
-    {
-        names[i] = malloc((NAMESIZE - 1) * sizeof(char));
-    }
-    //!!!mystrncpy
-    strncpy(names[0], "test.txt", NAMESIZE - 1);
-    strncpy(names[1], "file1.txt", NAMESIZE - 1);
-    strncpy(names[2], "file2.txt", NAMESIZE - 1);
-    strncpy(names[3], "file3.txt", NAMESIZE - 1);
-    strncpy(names[4], "dir4", NAMESIZE - 1);
-    strncpy(names[5], "file3.txt", NAMESIZE - 1);
-    strncpy(names[6], "wrong_file.txt", NAMESIZE - 1);
+    /**********MIMICS THE char **names and tar_fd THAT WOULD BE PASSED THROUGH**********/
+    // char *tar_name = malloc(NAMESIZE * sizeof(char));
+    // if (!tar_name)
+    // {
+    //     return -1;
+    // }
+    //strcpy(tar_name, "u.tar");
+    // printf("tar_name: %s\n", tar_name);
+    
+   
+   
+    // for (int i = 0; i < num_names; i++)
+    // {
+    //     names[i] = malloc((NAMESIZE - 1) * sizeof(char));
+    // }
+    // //!!!mystrncpy
+    // strncpy(names[0], "test.txt", NAMESIZE - 1);
+    // strncpy(names[1], "file1.txt", NAMESIZE - 1);
+    // strncpy(names[2], "file2.txt", NAMESIZE - 1);
+    // strncpy(names[3], "file3.txt", NAMESIZE - 1);
+    // strncpy(names[4], "dir4", NAMESIZE - 1);
+    // strncpy(names[5], "file3.txt", NAMESIZE - 1);
+    // strncpy(names[6], "wrong_file.txt", NAMESIZE - 1);
 
     //*****************PRINT OUT TEST************************/
     // printf("Inputted string names: \n");
@@ -676,21 +687,21 @@ Hashtable *get_update_names(int tar_fd, char **names)
     {
         // print_error("Error checking whether files indicated in hashtable exist.\n");
         printf("Error checking whether files indicated in hashtable exist.\n");
-        return -1;
+        return NULL;
     }
 
     if (get_mod_times(table) < 0)
     {
         // print_error("Error finding modification times for prompt file names.\n");
         printf("Error finding modification times for prompt file names.\n");
-        return -1;
+        return NULL;
     }
 
 
     if (check_newest_names(tar_fd, table) < 0)
     {
         print_error("Unable to check for newest names");
-        return -1;
+        return NULL;
     }
     //>>>>>> in main.c -uf: char ** newest_names = check_newest_names(tar_fd, table);
 
@@ -704,7 +715,7 @@ Hashtable *get_update_names(int tar_fd, char **names)
     if (newest_names == NULL)
     {
         failed_alloc();
-        return -1;
+        return NULL;
     }
 
     //*****************PRINT OUT TEST************************/

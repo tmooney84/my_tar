@@ -46,7 +46,7 @@ typedef struct names_list
 } Names_List;
 
 
-Hashtable *get_update_names(int tar_fd, char **names);
+Hashtable *get_update_names(char **input_names, int input_num_names);
 Hashtable *create_table(int num_buckets);
 void free_names_list(Names_List *list);
 int add_entry(File_Entry *entry, Hashtable *table);

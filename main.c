@@ -106,11 +106,11 @@ int map_file_metadata(header *f_header, int fd);
 int map_dir_metadata(header *f_header, char *file_name);
 size_t parse_octal(char *str, size_t max_len);
 char *parse_dir_slash(char *file_name);
-int archive_tar(char **names, int num_names, char op_flag); // int v_flag
+int archive_tar(char *tar_name, char **archive_names, int num_archive_names, char op_flag); // int v_flag
 
 int main(int argc, char **argv)
 {
-   int num_flag_args = 1; // for now is 1 to make it work
+    int num_flag_args = 1; // for now is 1 to make it work
 
     int num_names = argc - (num_flag_args + 1);
     char **first_name = argv;
@@ -134,341 +134,24 @@ int main(int argc, char **argv)
             print_error("Error creating tar file\n");
             return -1;
         }
-
-       return 0;
     }
     else if (my_strcmp(argv[1], "-rf") == 0)
     {
+        char *tar_name = names[0];
+
+        char **archive_names = names + 1;
+        int num_archive_names = num_names -1;
+
         char op_flag = 'r';
-        if (archive_tar(names, num_names, op_flag) < 0)
+        if (archive_tar(tar_name, archive_names, num_archive_names, op_flag) < 0)
         {
             print_error("Unable to archive files");
             return -1;
         }
+
+        tar_name = NULL;
+        archive_names = NULL;
     }
-
-    // archive_tar(argc, argv);
-    /*
-         need to go to end of file
-
-
-         and write in each block to see if it is a file, to find
-         last file. if it is a file, need to go to the end of its size add in the new file
-         and with intra-block padding and then make sure the two zero blocks and record padding
-         are correct
-
-         with "uf" same idea but first need to see if the file name is already contained in the
-         tar. If it is, need to compare the time modified numbers ... remember that the time modified
-         will be in the struct timespec[2] >>> the second element, times[1],tv.sec.
-
-     // struct timespec times[2];
-     // file_stats.st_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
-     // times[1].tv_sec = file_stats.st_mtime;
-
-
-    append_tar(names, num_names, 'r')
-         // for update: append_tar(names, num_names, 'u') // int v_flag
-
-    int append_tar(char **names, int num_names, char op_flag) // int v_flag
- {
-     int tar_fd;
-
-     char *tar_name = names[0];
-     // printf("tar_name: %s\n", tar_name);
-     tar_fd = create_tar_file(tar_name, op_flag);
-     if (tar_fd < 0)
-     {
-         return -1;
-     }
-
-    int prev_error_flag = 0;
-
-// typedef struct{
-//             int key;
-//             char name[MAX_FILENAME];
-//             int newest_version_flag;
-//             int file_exists_flag;
-//             File_Entry *next;
-// } File_Entry;
-
-// typedef struct {
-//         File_Entry **buckets;
-//         size_t num_buckets;
-// }Hashtable; 
-
-// Hashtable *create_table(size_t num_buckets)
-// {
-//         Hashtable *table = malloc(sizeof(Hashtable));
-//         table->num_buckets = num_buckets;
-//         table->buckets = calloc(num_buckets, sizeof(File_Entry *));
-//         return table;
-// }
-
-// //add + collision linked list logic
-
-// build_entry() fn needed? >>> one per file/dir name
-
-// int add_entry(File_Entry *entry, Hashtable *table)
-// {
-//     //unsigned char *hdr_data = (unsigned char *)hdr;
-
-//     File_Entry *table_data = (File_Entry *)table;
-
-//     if(table_data[entry->key] == NULL)
-//         {
-//             table_data[entry->key] = entry;
-//         }
-
-//     else if(table_data[entry->key] != NULL)
-//         {
-//            File_Entry *head = table_data[entry->key];
-//            FIle_Entry *iterator = head;
-
-//            while(iterator != NULL)
-//            {
-//             iterator = iterator->next;
-//            }
-//             iterator->next = entry;
-//         }
-
-//     else
-//     {
-//         print_error("Unable to add name to hash table");
-//         return -1;
-//     }
-// }
-
-// //free table data
-// free_table(Hashtable *table)
-// {
-// if(table == NULL)
-// {
-// return;
-// }
-//     for(size_t i = 0; i < table->num_buckets; i++)
-// {
-//     //is it * or not
-//         free(table[i]); >>> need to traverse and free each pointer
-// }
-//         free(table);
-// }
-
-// int hash_fn(char *name, int num_buckets)
-// {
-//     int sum = 0;
-
-//     for(int i = 0; i < my_strlen(name); i++)
-//     {
-//         int sum += (int)name[i];
-//     }
-//         return sum % num_buckets;
-// }
-
-
-
-// int name_found_in_tar_contents(int tar_fd, char **names, int num_names)
-// {
-//         int num_buckets = 10;   //for hashing_fn()
-//     Hashtable *file_table = create_table(int num_buckets);
-//     for(int i = 1; i < num_names; i++)
-//     {
-//         File_Entry *entry = malloc(sizeof(File_Entry *));
-//         if(entry == NULL)
-//         {
-//             failed_malloc();
-//             return -1;
-//         }
-//         entry->key = hash_fn(names[i], num_buckets);
-//         my_strncpy(entry[i-1]->name, names[i], MAX_FILENAME);
-//         entry->newest_version_flag = 1;
-//         entry->file_exists_flag = 0;
-//         entry->next = NULL;
-
-//         add_entry(entry, table);
-//         }
-
-struct stat tar_stats;
-if (fstat(tar_fd, &tar_stats) == -1)
-{
-    print_error("Unable to stat tar\n");
-    return -1;
-}
-
-long int tar_size = (long int)tar_stats.st_size;
-
-// make sure at beginning of tar_fd
-if (lseek(tar_fd, 0, SEEK_SET) < 0)
-{
-    print_error("Unable to lseek file\n");
-    return -1;
-}
-
-unsigned char header_buffer[512];
-int read_size = 0;
-
-// int *names_log = (int *)malloc(num_names * sizeof(int));
-// if (!names_log)
-// {
-//     failed_alloc();
-//     return -1;
-// }
-// my_memset(names_log, 0, num_names * sizeof(int));
-
-while (read_size < tar_size)
-{
-    my_memset(header_buffer, 0, sizeof(header_buffer));
-    int n = 0;
-
-    n = read(tar_fd, header_buffer, 512);
-    if ((n < 0) || n != 512)
-    {
-        print_error("Unable to read magic tar file\n");
-        return -1;
-    }
-    read_size += n;
-
-    struct header *f_header = (struct header *)header_buffer;
-
-    // Extracting the entire tar file
-    if ((f_header->magic[0] == 'u' &&
-         f_header->magic[1] == 's' &&
-         f_header->magic[2] == 't' &&
-         f_header->magic[3] == 'a' &&
-         f_header->magic[4] == 'r' &&
-         f_header->magic[5] == ' '))
-    {
-
-        if (num_names == 1)
-        {
-            print_error("my_tar command needs additional arguments to add files to tar file.");
-            return -1;
-        }
-
-        else if (num_names > 1)
-        {
-            //create struct
-
-
-
-
-            for (int i = 1; i < num_names; i++)
-            {
-                if (my_strcmp(names[i], f_header->name) == 0)
-                {
-                    my_printf("%s\n", names[i]);
-                    entry[i - 1]->file_exists_flag = 1; >>> need to get to entry
-
-                }
-            }
-        }
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//     if(op_flag == 'u')
-//      {
-//     int newest_version_flag = 1;
-
-//     //create struct that contains the name, newest, used
-
-//             //check to see if the files exist in file system
-
-//     for (int i = 1; i < num_names; i++)
-//     {
-//         //will need to use logic similar to process_entry
-//         with struct direct *entry to search through current
-//         directory to see if name of file / directory exists
-//     }
-
-//    //search for them in the tar ... keep directory logic in mind as
-//     while(current_block < total_blocks)
-//     {
-//    //ustar >>> f_header->name found
-
-//     for (int i = 1; i < num_names; i++)
-//     {
-//         //loop through tar to see if file exists
-//         {
-//             if (my_strcmp(names[i], f_header->name) == 0)
-//             {
-//                 if(names[i] mod time < contained modified time)
-//                     {
-//                         newest_version_flag = 0;
-//                         break;
-//                     }
-//             }
-
-//         }
-
-//      }
-//     }
-
-
-
-
-
-
-        //!!!need to update newest_version_flag placeholder
-        //if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r' || newest_version_flag))
-        if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r')  //temporary for 'r'
-        {
-            my_printf("Error processing %s into tar file\n", names[i]);
-            prev_error_flag = 1;
-        }
-    }
-
-// if (prev_error_flag = 1)
-// {
-//     previous_errors();
-// }
-
-// if(add_zeros(tar_fd) < 0)
-// {
-//     print_error("Unable to add zero padding");
-//     return -1;
-// }
-
-    close(tar_fd);
-
-     return 0;
- }
-
-
-
----------------------------------------------------------
-
----------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-     */
     else if (my_strcmp(argv[1], "-tf") == 0)
     {
         int tar_fd = open_tar(names);
@@ -486,49 +169,48 @@ while (read_size < tar_size)
     }
     else if (my_strcmp(argv[1], "-uf") == 0)
     {
-    /*
-    char op_flag = 'u';
-    
-        Hashmap *table = get_update_names(int tar_fd, char **names)
-        Names_List* newest_names = get_newest_names(table);
-         if(newest_names == NULL)
-         {
-             failed_alloc();
-             return -1;
-         }
+        
+        char op_flag = 'u';
+
+        Hashtable *table = get_update_names(names, num_names);
+        Names_List *newest_names = get_newest_names(table);
+        if (newest_names == NULL)
+        {
+            failed_alloc();
+            return -1;
+        }
 
         int num_update_names = newest_names->num_names;
         char **update_names = newest_names->names;
 
-*****************PRINT OUT TEST************************
+        /*****************PRINT OUT TEST************************/
 
-    for(int i = 0; i < num_update_names; i++)
-    {
-        printf("newest_names[%d]: %s", i, newest_names[i]);
-    }
-    ****************************************************** 
+        for (int i = 0; i < num_update_names; i++)
+        {
+            printf("newest_names[%d]: %s", i, update_names[i]);
+        }
+        /*******************************************************/
 
-
-        if (archive_tar(update_names, num_update_names, op_flag) < 0)
+        char *tar_name = names[0];
+        
+        if (archive_tar(tar_name, update_names, num_update_names, op_flag) < 0)
         {
             print_error("Unable to archive files");
             return -1;
-        } 
+        }
 
-       //print out error messages of incorrect file names 
+        // print out error messages of incorrect file names
         print_error_names(table);
 
         free_names_list(newest_names);
         newest_names = NULL;
 
         free_table(table);
-        table = NULL;'
+        table = NULL;
 
         update_names = NULL;
-    
+
         return 0;
-        */ 
-    
     }
     else if (my_strcmp(argv[1], "-xf") == 0)
     {
@@ -545,15 +227,14 @@ while (read_size < tar_size)
     }
 
     free_string_array(names, num_names);
-    names = NULL; 
+    names = NULL;
     return 0;
 }
 
-int archive_tar(char **names, int num_names, char op_flag) // int v_flag
+int archive_tar(char *tar_name, char **archive_names, int num_archive_names, char op_flag) // int v_flag
 {
     int tar_fd;
 
-    char *tar_name = names[0];
     // printf("tar_name: %s\n", tar_name);
     tar_fd = create_tar_file(tar_name, op_flag);
     if (tar_fd < 0)
@@ -640,14 +321,14 @@ int archive_tar(char **names, int num_names, char op_flag) // int v_flag
     current_location = lseek(tar_fd, current_location + num_blocks * BLOCKSIZE, SEEK_SET);
     off_t pre_process_location = current_location;
 
-    for (int i = 1; i < num_names; i++)
+    for (int i = 0; i < num_archive_names; i++)
     {
 
-        //if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r')) // temporary for 'r'
-       current_location = process_entry(names[i], tar_fd); 
+        // if (process_entry(names[i], tar_fd) < 0 && (op_flag == 'r')) // temporary for 'r'
+        current_location = process_entry(archive_names[i], tar_fd);
         if (current_location < pre_process_location && (op_flag == 'r')) // temporary for 'r'
         {
-            file_error(names[i]);
+            file_error(archive_names[i]);
             prev_error_flag = 1;
         }
     }
@@ -658,8 +339,8 @@ int archive_tar(char **names, int num_names, char op_flag) // int v_flag
 
     off_t pre_extra_padding_location = lseek(tar_fd, current_location, SEEK_SET);
 
-   /********************************************************************************** */
-   printf("Pre_add_zeros location: %ld\n", pre_extra_padding_location);
+    /********************************************************************************** */
+    printf("Pre_add_zeros location: %ld\n", pre_extra_padding_location);
 
     current_location = add_zeros(tar_fd);
     if (current_location < pre_extra_padding_location)
@@ -927,7 +608,7 @@ int create_tar_file(char *tar_name, char op_flag)
     else if (op_flag == 'r' || op_flag == 'u')
     {
         tar_fd = open_file(tar_name, O_RDWR | O_CREAT, TAR_PERMS);
-        //tar_fd = open_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
+        // tar_fd = open_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
     }
     // tar_fd = open_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
     // printf("tar_fd: %d\n", tar_fd);
@@ -994,7 +675,7 @@ off_t add_zeros(int tar_fd)
     {
         return -1;
     }
-/***************************************** */
+    /***************************************** */
     off_t current_location = lseek(tar_fd, 0, SEEK_CUR);
     printf("Location after entering add_zeros: %ld\n", current_location);
 
@@ -1003,9 +684,9 @@ off_t add_zeros(int tar_fd)
 
     // need two zero blocks and then need to see if that goes over the size of a record
     int zero_padding = 2 * BLOCKSIZE;
-    //int padded_data = tar_size + zero_padding;
+    // int padded_data = tar_size + zero_padding;
     int padded_data = current_location + zero_padding;
-    
+
     int total_required_padding;
 
     int rec_num = (current_location % (RECORDSIZE * BLOCKSIZE) == 0) ? current_location / (RECORDSIZE * BLOCKSIZE) : current_location / (RECORDSIZE * BLOCKSIZE) + 1;
@@ -1023,9 +704,7 @@ off_t add_zeros(int tar_fd)
 
     // printf("padding needed: %d\n", total_required_padding);
 
-
-
-/***************************************** */
+    /***************************************** */
     off_t pre_pad_location = lseek(tar_fd, 0, SEEK_CUR);
 
     off_t post_pad_location = write_padding(tar_fd, total_required_padding);
@@ -1036,8 +715,7 @@ off_t add_zeros(int tar_fd)
         return -1;
     }
 
-
-/***************************************** */
+    /***************************************** */
     current_location = lseek(tar_fd, 0, SEEK_CUR);
 
     tar_size = (long int)tar_stats.st_size;
@@ -1077,8 +755,8 @@ off_t process_entry(char *path, int tar_fd)
         // if file to append
         current_location = append_file_data(tar_fd, path);
 
-    /*************************************************** */
-    current_location = lseek(tar_fd, current_location, SEEK_SET);
+        /*************************************************** */
+        current_location = lseek(tar_fd, current_location, SEEK_SET);
     }
 
     else if (S_ISDIR(arg_stats.st_mode))
@@ -1118,10 +796,10 @@ off_t process_entry(char *path, int tar_fd)
             }
         }
 
-    /*************************************************** */
-    current_location = lseek(tar_fd, current_location, SEEK_SET);
-    
-    closedir(dir);
+        /*************************************************** */
+        current_location = lseek(tar_fd, current_location, SEEK_SET);
+
+        closedir(dir);
 
         //    if(v_flag) >>> to print the file that was added
         // {
@@ -1131,7 +809,7 @@ off_t process_entry(char *path, int tar_fd)
 
     /*************************************************** */
     current_location = lseek(tar_fd, current_location, SEEK_SET);
-    
+
     return current_location;
 }
 
@@ -1490,18 +1168,17 @@ int map_file_metadata(header *f_header, int fd)
 
     struct timeval tv[2];
     time_t mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
-    
+
     tv[0].tv_sec = mtime;
     tv[0].tv_usec = 0;
     tv[1].tv_sec = mtime;
     tv[1].tv_usec = 0;
 
-    if(futimes(fd, tv) < 0)
+    if (futimes(fd, tv) < 0)
     {
         print_error("Unable to set file times\n");
         return -1;
     }
-
 
     /* REMEMBER OCT STRING TO INT
    st_mode    chmod()   → Derived from the tar header’s mode and typeflag
@@ -1590,54 +1267,50 @@ size_t parse_octal(char *str, size_t max_len)
 
 off_t write_padding(int tar_fd, int total_required_padding)
 {
-char zero_buff[total_required_padding];
+    char zero_buff[total_required_padding];
     my_memset(zero_buff, 0, total_required_padding);
 
     ssize_t bytes_written = 0;
-/*
- pre_pad logic works for append but not create dirs
-********************************************************
+    /*
+     pre_pad logic works for append but not create dirs
+    ********************************************************
 
-    off_t pre_pad_location = lseek(tar_fd, 0, SEEK_CUR);
-    printf("pre_pad_location: %ld", pre_pad_location);
+        off_t pre_pad_location = lseek(tar_fd, 0, SEEK_CUR);
+        printf("pre_pad_location: %ld", pre_pad_location);
 
-********************************************************
-*/
+    ********************************************************
+    */
 
-/*
-    need to find the end of data>>> SEEK_END then go back 512 until header found with ustar
-    then plus file_size rounded up to nearest block
-
-    
-// SEEK_END logic works for create dirs but not append
-//----------------------------------------
-    int end_data = lseek(tar_fd, 0, SEEK_END);
-    if (end_data < 0)
-    {
-        print_error("Unable to random access tar file\n");
-        return -1;
-    }
-
-    printf("End data: %d\n", end_data);
-//-------------------------------------------
-*/
+    /*
+        need to find the end of data>>> SEEK_END then go back 512 until header found with ustar
+        then plus file_size rounded up to nearest block
 
 
+    // SEEK_END logic works for create dirs but not append
+    //----------------------------------------
+        int end_data = lseek(tar_fd, 0, SEEK_END);
+        if (end_data < 0)
+        {
+            print_error("Unable to random access tar file\n");
+            return -1;
+        }
 
+        printf("End data: %d\n", end_data);
+    //-------------------------------------------
+    */
 
-//searching from end of file to find end written info with ustar then file size rounded to
-//nearest 512
-//-------------------------------------------
+    // searching from end of file to find end written info with ustar then file size rounded to
+    // nearest 512
+    //-------------------------------------------
 
-unsigned char header_buffer[512];
+    unsigned char header_buffer[512];
 
-off_t current_location = lseek(tar_fd, 0, SEEK_END);
+    off_t current_location = lseek(tar_fd, 0, SEEK_END);
     if (current_location < 0)
     {
         print_error("Unable to lseek file\n");
         return -1;
     }
-
 
     struct header *f_header;
 
@@ -1671,19 +1344,19 @@ off_t current_location = lseek(tar_fd, 0, SEEK_END);
         {
             current_location = lseek(tar_fd, 0, SEEK_CUR);
             int size = parse_octal(f_header->size, sizeof(f_header->size));
-   
-            if(size % BLOCKSIZE == 0)
+
+            if (size % BLOCKSIZE == 0)
             {
                 lseek(tar_fd, current_location + size, SEEK_SET);
-            } 
-           else
-           {
-                lseek(tar_fd, current_location + size + (BLOCKSIZE - size), SEEK_SET);  
-           }
-            
-           off_t now_local = lseek(tar_fd, 0, SEEK_CUR); 
-            printf("now_local: %ld", now_local);  
-           break;
+            }
+            else
+            {
+                lseek(tar_fd, current_location + size + (BLOCKSIZE - size), SEEK_SET);
+            }
+
+            off_t now_local = lseek(tar_fd, 0, SEEK_CUR);
+            printf("now_local: %ld", now_local);
+            break;
         }
         current_location = lseek(tar_fd, -512, SEEK_CUR);
         if (current_location < 0)
@@ -1692,7 +1365,7 @@ off_t current_location = lseek(tar_fd, 0, SEEK_END);
             return -1;
         }
     }
-//**********************************************************************
+    //**********************************************************************
 
     while (bytes_written < total_required_padding)
     {
@@ -1706,9 +1379,9 @@ off_t current_location = lseek(tar_fd, 0, SEEK_END);
         // printf("writing data\n");
     }
     // printf("bytes_written: %zu\n", bytes_written);
-    
+
     off_t end_location = lseek(tar_fd, 0, SEEK_CUR);
-    
+
     return end_location;
 }
 
@@ -1857,46 +1530,44 @@ int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
             return -1;
         }
         total_bytes_written += m;
-        
-        //lseek(dst_fd, current_location + m, SEEK_SET);
+
+        // lseek(dst_fd, current_location + m, SEEK_SET);
 
         /*********************************** */
         current_location = lseek(dst_fd, 0, SEEK_CUR);
-
 
         /*********************************** */
         current_location = lseek(dst_fd, 0, SEEK_CUR);
     }
-        // if writing to tar file add intra-block padding
-        if (tar_flag == 1)
+    // if writing to tar file add intra-block padding
+    if (tar_flag == 1)
+    {
+        off_t abs_offset = start_offset = total_bytes_written;
+        if (abs_offset % BLOCKSIZE != 0)
         {
-            off_t abs_offset = start_offset = total_bytes_written;
-            if (abs_offset % BLOCKSIZE != 0)
-            {
-                additional_size = BLOCKSIZE - (abs_offset % BLOCKSIZE);
-            }
+            additional_size = BLOCKSIZE - (abs_offset % BLOCKSIZE);
+        }
 
-            if (additional_size > 0)
-            {
-                unsigned char add_buff[additional_size];
-                my_memset(add_buff, '\0', additional_size);
+        if (additional_size > 0)
+        {
+            unsigned char add_buff[additional_size];
+            my_memset(add_buff, '\0', additional_size);
 
-                while (add_written < additional_size)
+            while (add_written < additional_size)
+            {
+                ssize_t written = write(dst_fd, add_buff + add_written, additional_size - add_written);
+                if (written < 0)
                 {
-                    ssize_t written = write(dst_fd, add_buff + add_written, additional_size - add_written);
-                    if (written < 0)
-                    {
-                        print_error("Failure to write padding\n");
-                        return -1;
-                    }
-                    add_written += written;
+                    print_error("Failure to write padding\n");
+                    return -1;
                 }
+                add_written += written;
             }
         }
+    }
     //}
     int write_size = (long int)total_bytes_written + (long int)add_written;
     off_t final_location = lseek(dst_fd, 0, SEEK_CUR);
-        printf("final_location after writing file data: %ld", final_location);
+    printf("final_location after writing file data: %ld", final_location);
     return write_size;
 }
-
