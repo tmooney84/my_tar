@@ -12,10 +12,10 @@
 #include <time.h>
 #include <sys/time.h>
 
-// #include "utils.h"
-// #include "my_printf.h"
-// #include "print_error.h"
-// #include "file_header_fns.h"
+#include "utils.h"
+#include "my_printf.h"
+#include "print_error.h"
+#include "file_header_fns.h"
 
 #define RECORDSIZE 20
 #define NAMESIZE 100
@@ -74,6 +74,40 @@ Hashtable *create_table(size_t num_buckets)
     return table;
 }
 
+//*********************************EXACT COPY OF parse_octal FROM main.c **********************/
+size_t parse_octal(char *str, size_t max_len)
+{
+    size_t num = 0;
+    size_t i = 0;
+    for (i = 0; i < max_len && str[i] >= '0' && str[i] <= '7'; ++i)
+    {
+        num *= 8;
+        num += str[i] - '0';
+    }
+
+    return num;
+}
+//*********************************************************************************************/
+
+//*************************EXACT COPY OF free_string_array() FROM main.c **********************/
+// frees pointers related to string array
+void free_string_array(char **names, int num_names)
+{
+    if (names == NULL)
+    {
+        return;
+    }
+
+    for (int i = 0; i < num_names; i++)
+    {
+        free(names[i]); // Free each dynamically allocated string
+    }
+
+    free(names);
+}
+//**********************************************************************************************/
+
+
 // add + collision linked list logic
 
 // build_entry() fn needed? >>> one per file/dir name
@@ -102,9 +136,8 @@ int add_entry(File_Entry *entry, Hashtable *table)
                 printf("entry: %s is a duplicate.\n", entry->name);
                 duplicate_flag = 1;
                 break;
-               // free(entry);// >>> DELETE probably better to do in calling fn
+                // free(entry);// >>> DELETE probably better to do in calling fn
             }
-
             iterator = iterator->next;
         }
 
@@ -199,92 +232,124 @@ Hashtable *build_prompt_names_table(char **names, int num_names)
         else if (duplicate_flag == 1)
         {
             --names_table->num_vetted_names;
-            free(entry); 
+            free(entry);
         }
     }
     return names_table;
 }
 
-// Search functionality
+/***********************Search functionality***********************/
 
-/************************************************************ */
-/*
-int name_found_in_tar_contents(int tar_fd, Hashtable *table)
- int num_prompt_names = table->num_prompt_names;
-
-            struct stat tar_stats;
-if (fstat(tar_fd, &tar_stats) == -1)
+int check_newest_names(int tar_fd, Hashtable *table)
 {
-    print_error("Unable to stat tar\n");
-    return -1;
-}
-
-long int tar_size = (long int)tar_stats.st_size;
-
-// make sure at beginning of tar_fd
-if (lseek(tar_fd, 0, SEEK_SET) < 0)
-{
-    print_error("Unable to lseek file\n");
-    return -1;
-}
-
-unsigned char header_buffer[512];
-int read_size = 0;
-
-while (read_size < tar_size)
-{
-    my_memset(header_buffer, 0, sizeof(header_buffer));
-    int n = 0;
-
-    n = read(tar_fd, header_buffer, 512);
-    if ((n < 0) && n != 512)
+    int num_vetted_names = table->num_vetted_names;
+    int num_newest_names = num_vetted_names;
+    struct stat tar_stats;
+    if (fstat(tar_fd, &tar_stats) == -1)
     {
-        print_error("Unable to read magic tar file\n");
+        print_error("Unable to stat tar\n");
         return -1;
     }
-    read_size += n;
 
-    struct header *f_header = (struct header *)header_buffer;
+    long int tar_size = (long int)tar_stats.st_size;
 
-    // Extracting the entire tar file
-    if ((f_header->magic[0] == 'u' &&
-         f_header->magic[1] == 's' &&
-         f_header->magic[2] == 't' &&
-         f_header->magic[3] == 'a' &&
-         f_header->magic[4] == 'r' &&
-         f_header->magic[5] == ' '))
+    // make sure at beginning of tar_fd
+    if (lseek(tar_fd, 0, SEEK_SET) < 0)
     {
+        print_error("Unable to lseek file\n");
+        return -1;
+    }
 
-        if (num_prompt_names == 0)
+    unsigned char header_buffer[512];
+    int read_size = 0;
+
+    while (read_size < tar_size)
+    {
+        my_memset(header_buffer, 0, sizeof(header_buffer));
+        int n = 0;
+
+        n = read(tar_fd, header_buffer, 512);
+        if ((n < 0) && n != 512)
         {
-            print_error("my_tar command needs additional arguments to add files to tar file.");
+            print_error("Unable to read magic tar file\n");
             return -1;
         }
+        read_size += n;
 
-        else if (num_prompt_names > 0)
+        struct header *f_header = (struct header *)header_buffer;
+
+        // Extracting the entire tar file
+        if ((f_header->magic[0] == 'u' &&
+             f_header->magic[1] == 's' &&
+             f_header->magic[2] == 't' &&
+             f_header->magic[3] == 'a' &&
+             f_header->magic[4] == 'r' &&
+             f_header->magic[5] == ' '))
         {
+            int f_hash = hash_fn(f_header->name, table->num_buckets);
 
-       // vvv PUT IN FUNCTIONALITY FOR TO SKIP IF file_exists_flag = 0
+            if (num_vetted_names == 0)
+            {
+                //!!!print_error("my_tar command needs additional arguments to add files to tar file.");
+                printf("my_tar command needs additional arguments to add files to tar file.");
+                return -1;
+            }
 
-        for (int i = 0; i < num_prompt_names; i++)
-            {           //be aware that this will not pick up file names than 99 characters, since prefix is needed as well
-                if (table->buckets[i]->file_exists_flag == 1 &&  (my_strcmp(table->buckets[i]->name, f_header->name) == 0))
+            else if (num_vetted_names > 0)
+            {
+                if (table->buckets[f_hash] == NULL)
                 {
-                    if(check_file_age(f_header->m_time, table->buckets[i]->name == 1)
-                    {}
-                    else
-                    {
-                        table->buckets[i]->newest_version_flag = 0;
-                    }
+                    //!!!print_error("Unable to match file name...Error reading hashtable");
+                    printf("Unable to match file name...Error reading hashtable");
+                    return NULL;
+                }
 
-                    break;
+                if (table->buckets[f_hash] != NULL)
+                {
+                    File_Entry *iterator = table->buckets[f_hash];
+
+                    while (iterator != NULL)
+                    {
+                        {
+                            // if(my_strcmp(iterator->name, f_header->name) == 0)
+                            if ((strcmp(iterator->name, f_header->name) == 0) && iterator->newest_version_flag == 1)
+                            {
+                                time_t f_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
+                                
+                                if (iterator->mod_time <= f_mtime)
+                                {
+                                    iterator->newest_version_flag = 0;
+                                    num_newest_names--; 
+                                    break;
+                                }
+                            }
+                        }
+                        iterator = iterator->next;
+                    }
                 }
             }
         }
     }
+    return 0;
 }
 
-*/
+
+// char ** newest_names = get_newest_names(table)
+//     char **newest_names = malloc(num_newest_names * sizeof(char *));
+//     for(int i = 0; i < num_newest_names; i++)
+//     {
+//         newest_names[i] = malloc(NAMESIZE * sizeof(char));
+//     }
+
+
+//     free_string_array()
+// }
+
+
+
+
+
+
 
 // Checking file age vs. f_header file
 /****************************************************** */
@@ -317,16 +382,16 @@ int get_mod_times(Hashtable *table)
 
             while (iterator != NULL)
             {
-                    if (iterator->file_exists_flag == 1)
+                if (iterator->file_exists_flag == 1)
+                {
+                    struct stat file_stats;
+                    if (stat(iterator->name, &file_stats) == -1)
                     {
-                        struct stat file_stats;
-                        if (stat(iterator->name, &file_stats) == -1)
-                        {
-                            //*** file_error(table->buckets[i]->name);
-                            return -1;
-                        }
-                        iterator->mod_time = file_stats.st_mtime;
+                        //*** file_error(table->buckets[i]->name);
+                        return -1;
                     }
+                    iterator->mod_time = file_stats.st_mtime;
+                }
                 n++;
                 iterator = iterator->next;
             }
@@ -400,12 +465,29 @@ int check_files_exist(Hashtable *table)
     return 0;
 }
 
-//char **get_update_names(int tar_fd, char **names)
-//vvv
+// Hashmap *get_update_names(int tar_fd, char **names)
+// vvv
 int main()
 {
 
-    //MIMICS THE char **names THAT WOULD BE PASSED THROUGH
+/*********************MIMICS tar_fd*************************************/
+int tar_fd;
+
+    char *tar_name = malloc(NAMESIZE * sizeof(char));
+    if(!tar_name)
+    {
+        return -1;
+    }
+    strcpy(tar_name, "update.tar");
+    // printf("tar_name: %s\n", tar_name);
+    int tar_fd = create_tar_file(tar_name, 'u');
+    if (tar_fd < 0)
+    {
+        return -1;
+    }
+/************************************************************************/
+
+/**********MIMICS THE char **names THAT WOULD BE PASSED THROUGH**********/
     int num_names = 6;
     char **names = malloc(sizeof(char *) * num_names);
 
@@ -469,48 +551,40 @@ int main()
             }
         }
     }
+        if(check_newest_names(tar_fd, table) < 0)
+        {
+           print_error("Unable to check for newest names");
+           return -1; 
+        } 
+        //>>>>>> in main.c -uf: char ** newest_names = check_newest_names(tar_fd, table);
 
-    char **check_newest_in_tar(tar_fd, table)
-
-    //char ** newest_names = create_newest_names(table)
-    
-    //cycle through tar and once name found check names on hashtable
-    //if match then compare modified flag (need to 
-    //convert the tar file mod to time_t) them compare and change
-    // newest_flag accordingly... 
-    
-    
-    // resize_newest_names(newest_names) 
-    // use vetted names number for malloc initial space
-    // cycle through and for each name and check if newest is 1
-    //resize malloc after n++ the number of names that are new
-    //^^^ make sure that memory for the names that are truncated 
-    //are freed
-
-
-
-
-
-
-
-
-
-    // CYCLE THRU UMAGICS TO COMPARE DATE MODIFIED
-    // using hash function to find bucket and then
-    // traverse until find node and compare DATE MODIFIED
-    // both should be t_time
-
-    // PRINT ERRORS
-    // need to include the file not found print error functionality; I believe it should
-    // have the two layers of errors... functionality that I should be able to copy
-
-    for (int i = 0; i < num_names; i++)
-    {
-        free(names[i]);
+        free_string_array(names, num_names);
+                
+        //!!! return table;
+        return 0;
     }
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        // char ** newest_names = get_newest_names(table)
 
-    free(names);
-    free_table(table);
+        // return newest_names;
 
-    return 0;
-}
+        // cycle through tar and once name found check names on hashtable
+        // if match then compare modified flag (need to
+        // convert the tar file mod to time_t) them compare and change
+        //  newest_flag accordingly...
+
+        // resize_newest_names(newest_names)
+        // use vetted names number for malloc initial space
+        // cycle through and for each name and check if newest is 1
+        // resize malloc after n++ the number of names that are new
+        //^^^ make sure that memory for the names that are truncated
+        // are freed
+
+        // CYCLE THRU UMAGICS TO COMPARE DATE MODIFIED
+        // using hash function to find bucket and then
+        // traverse until find node and compare DATE MODIFIED
+        // both should be t_time
+
+        // PRINT ERRORS
+        // need to include the file not found print error functionality; I believe it should
+        // have the two layers of errors... functionality that I should be able to copy

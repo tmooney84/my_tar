@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "print_error.h": "c",
+        "utils.h": "c"
+    }
+}

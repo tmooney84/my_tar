@@ -486,12 +486,21 @@ while (read_size < tar_size)
     else if (my_strcmp(argv[1], "-uf") == 0)
     {
     // char op_flag = 'u';
-    //
-    //     if (archive_tar(vetted_names, num_names, op_flag) < 0)
+    
+        // Hashmap *table = get_update_names(int tar_fd, char **names)
+        //char **newest_names = get_newest_names(tar_fd, table);
+        //int num_newest_names = sizeof(newest_names)/sizeof(char *);
+    
+    ///
+    //     if (archive_tar(newest_names, num_newest_names, op_flag) < 0)
     //     {
     //         print_error("Unable to archive files");
     //         return -1;
     //     } 
+   
+    //     free_string_array(newest_names);
+    //     free_table(table);
+    
     
     }
     else if (my_strcmp(argv[1], "-xf") == 0)
