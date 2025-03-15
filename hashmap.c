@@ -52,6 +52,12 @@ typedef struct Hashtable
     int num_vetted_names;
 } Hashtable;
 
+typedef struct names_list
+{
+    char **names;
+    int num_names;
+} Names_List;
+
 //     int append_tar(char **names, int num_names, char op_flag) // int v_flag
 //  {
 //      int tar_fd;
@@ -74,7 +80,8 @@ Hashtable *create_table(size_t num_buckets)
     return table;
 }
 
-//*********************************EXACT COPY OF parse_octal FROM main.c **********************/
+//*********************************EXACT COPIES FROM main.c **********************/
+//*********************************EXACT COPIES FROM main.c **********************/
 size_t parse_octal(char *str, size_t max_len)
 {
     size_t num = 0;
@@ -87,9 +94,63 @@ size_t parse_octal(char *str, size_t max_len)
 
     return num;
 }
-//*********************************************************************************************/
+void failed_alloc()
+{
+    print_error("Failed to allocate memory.\n");
+}
+void tarball_error(char *tar_name)
+{
+    print_error("my_tar: Cannot open %s\n", tar_name);
+}
 
-//*************************EXACT COPY OF free_string_array() FROM main.c **********************/
+int open_file(char *file_name, int flags, int perms)
+{
+    int fd;
+    fd = open(file_name, flags, perms);
+    if (fd < 0)
+    {
+        tarball_error(file_name);
+        return -1;
+    }
+    return fd;
+}
+
+int create_tar_file(char *tar_name, char op_flag)
+{
+    int tar_fd;
+
+    // create tar file:
+    if (op_flag == 'c')
+    {
+        tar_fd = open_file(tar_name, O_RDWR | O_CREAT | O_TRUNC, TAR_PERMS);
+    }
+
+    else if (op_flag == 't')
+    {
+        tar_fd = open_file(tar_name, O_RDONLY, TAR_PERMS);
+    }
+
+    else if (op_flag == 'r' || op_flag == 'u')
+    {
+        tar_fd = open_file(tar_name, O_RDWR | O_CREAT, TAR_PERMS);
+        //tar_fd = open_file(tar_name, O_RDWR | O_CREAT | O_APPEND, TAR_PERMS);
+    }
+    // tar_fd = open_file(tar_name, O_CREAT, TAR_PERMS);//TAR_PERMS
+    // printf("tar_fd: %d\n", tar_fd);
+
+    else
+    {
+        tarball_error(tar_name);
+    }
+
+    if (tar_fd < 0)
+    {
+        tarball_error(tar_name);
+        return -1;
+    }
+    return tar_fd;
+}
+
 // frees pointers related to string array
 void free_string_array(char **names, int num_names)
 {
@@ -105,11 +166,53 @@ void free_string_array(char **names, int num_names)
 
     free(names);
 }
+void previous_errors()
+{
+    print_error("tar: Exiting with failure status due to previous errors\n");
+}
+
+void file_not_found_error(char *file_name)
+{
+    print_error("tar: %s: Not found in archive\n", file_name);
+}
+
+void file_error(char *file_name)
+{
+    print_error("my_tar: %s: Cannot stat: No such file or directory\n", file_name);
+}
+
 //**********************************************************************************************/
+//**********************************************************************************************/
+
+
+
+
+
+
+
 
 // add + collision linked list logic
 
 // build_entry() fn needed? >>> one per file/dir name
+
+
+
+
+
+void free_names_list(Names_List *list)
+{
+    if(list == NULL)
+    {
+        return;
+    }
+    for(int i = 0; i < list->num_names; i++)
+    {
+        free(list->names[i]);
+    }
+    free(list->names);
+}
+
+
 
 int add_entry(File_Entry *entry, Hashtable *table)
 {
@@ -157,13 +260,13 @@ int add_entry(File_Entry *entry, Hashtable *table)
 }
 
 // free table data
-int free_table(Hashtable *table)
+void free_table(Hashtable *table)
 {
     if (table == NULL)
     {
         // print_error("Table does not exist.");
         printf("Table does not exist.");
-        return -1;
+        return;
     }
     for (size_t i = 0; i < table->num_buckets; i++)
     {
@@ -179,9 +282,8 @@ int free_table(Hashtable *table)
     }
 
     free(table->buckets);
-    free(table);
 
-    return 0;
+    free(table);
 }
 
 int hash_fn(char *name, int num_buckets)
@@ -189,7 +291,9 @@ int hash_fn(char *name, int num_buckets)
     int sum = 0;
 
     //***for (int i = 0; i < my_strlen(name); i++)
-    for (int i = 0; i < strlen(name); i++)
+    int name_len = strlen(name);
+
+    for (int i = 0; i < name_len; i++)
     {
         sum += (int)name[i];
     }
@@ -300,7 +404,7 @@ int check_newest_names(int tar_fd, Hashtable *table)
                 {
                     //!!!print_error("Unable to match file name...Error reading hashtable");
                     printf("Unable to match file name...Error reading hashtable");
-                    return NULL;
+                    return -1;
                 }
 
                 if (table->buckets[f_hash] != NULL)
@@ -332,11 +436,12 @@ int check_newest_names(int tar_fd, Hashtable *table)
     return 0;
 }
 
-char **get_newest_names(Hashtable *table)
+Names_List *get_newest_names(Hashtable *table)
 {
     // First pass: Count valid entries
+    int n; 
     int num_newest_names = 0;
-    for (int i = 0; i < table->num_buckets; i++)
+    for (int i = 0; i < (int)table->num_buckets && n < table->num_vetted_names; i++)
     {
         File_Entry *entry = table->buckets[i];
         while (entry != NULL)
@@ -345,6 +450,7 @@ char **get_newest_names(Hashtable *table)
             {
                 num_newest_names++;
             }
+            n++;
             entry = entry->next;
         }
     }
@@ -355,36 +461,48 @@ char **get_newest_names(Hashtable *table)
     }
 
     // Allocate needed space for newest_names
-    char **newest_names = malloc(num_newest_names * sizeof(char *));
+    Names_List * newest_names = malloc(sizeof(Names_List));
     if (newest_names == NULL)
     {
+        failed_alloc(); 
+        return NULL;
+    }
+
+    newest_names->num_names = num_newest_names; 
+
+    newest_names->names = malloc(num_newest_names * sizeof(char *));
+    if (newest_names->names == NULL)
+    {
+        failed_alloc(); 
         return NULL;
     }
 
     // Second pass: Copy names
+    int m = 0;
     int index = 0;
-    for (int i = 0; i < table->num_buckets; i++)
+    for (int i = 0; i < (int)table->num_buckets && m < num_newest_names; i++)
     {
         File_Entry *entry = table->buckets[i];
         while (entry != NULL)
         {
             if (entry->file_exists_flag && entry->newest_version_flag)
             {
-                newest_names[index] = malloc(NAMESIZE * sizeof(char));
-                if (newest_names[index] == NULL)
+                newest_names->names[index] = malloc(NAMESIZE * sizeof(char));
+                if (newest_names->names[index] == NULL)
                 {
                     // Cleanup and return NULL
                     for (int j = 0; j < index; j++)
                     {
-                        free(newest_names[j]);
+                        free(newest_names->names[j]);
                     }
                     free(newest_names);
                     return NULL;
                 }
+                m++;
             }
             //!!! my_strncpy(newest_names[index], entry->name, NAMESIZE -1)
-            strncpy(newest_names[index], entry->name, NAMESIZE - 1);
-            newest_names[index][NAMESIZE - 1] = '\0'; //>>>REMOVE FOR my_strncpy()
+            strncpy(newest_names->names[index], entry->name, NAMESIZE - 1);
+            newest_names->names[index][NAMESIZE - 1] = '\0'; //>>>REMOVE FOR my_strncpy()
             index++;
         }
         entry = entry->next;
@@ -402,7 +520,7 @@ int get_mod_times(Hashtable *table)
     }
 
     int n = 0;
-    for (int i = 0; i < table->num_buckets && n < table->num_vetted_names; i++)
+    for (int i = 0; i < (int)table->num_buckets && n < table->num_vetted_names; i++)
     {
         if (table->buckets[i] != NULL)
         {
@@ -492,13 +610,40 @@ int check_files_exist(Hashtable *table)
     return 0;
 }
 
-//WHERE I LEFT OFF!!!
-int print_error_names(table)
+// WHERE I LEFT OFF!!!
+int print_error_names(Hashtable *table)
 {
-// look at  ln 880 in main.c to see loop of file_not_found_error
-// and previous_errors(); are used and replicate with iteration
-}
+    // look at  ln 880 in main.c to see loop of file_not_found_error
+    // and previous_errors(); are used and replicate with iteration
+    int n = 0;
+    int missing_names_flag = 0;
 
+    for (int i = 0; i < (int)table->num_buckets && n < table->num_vetted_names; i++)
+    {
+        if (table->buckets[i] != NULL)
+        {
+            File_Entry *iterator = table->buckets[i];
+
+            while (iterator != NULL)
+            {
+                {
+                    if (iterator->file_exists_flag == 0)
+                    {
+                        file_not_found_error(iterator->name);
+                        missing_names_flag = 1;
+                    }
+                    n++;
+                }
+                iterator = iterator->next;
+            }
+        }
+    }
+    if (missing_names_flag)
+    {
+        previous_errors();
+    }
+    return 0;
+}
 
 // Hashmap *get_update_names(int tar_fd, char **names)
 // vvv
@@ -515,7 +660,7 @@ int main()
     }
     strcpy(tar_name, "update.tar");
     // printf("tar_name: %s\n", tar_name);
-    int tar_fd = create_tar_file(tar_name, 'u');
+    tar_fd = create_tar_file(tar_name, 'u');
     if (tar_fd < 0)
     {
         return -1;
@@ -545,7 +690,7 @@ int main()
         printf("names[%d]: %s\n", i, names[i]);
     }
     /************************************************************************/
-    
+
     Hashtable *table = build_prompt_names_table(names, num_names);
     if (check_files_exist(table) < 0)
     {
@@ -566,7 +711,7 @@ int main()
 
     int n = 0;
 
-    for (int i = 0; i < table->num_buckets && n < table->num_vetted_names; i++)
+    for (int i = 0; i < (int)table->num_buckets && n < table->num_vetted_names; i++)
     {
         if (table->buckets[i] != NULL)
         {
@@ -595,40 +740,39 @@ int main()
     //>>>>>> in main.c -uf: char ** newest_names = check_newest_names(tar_fd, table);
 
     //************************************WILL BE IN main.c */
-    print_error_names(table); 
-    
-    //***************************************************** */ 
-    
+    print_error_names(table);
+
+    //***************************************************** */
+
     //************************************WILL BE IN main.c */
-    char ** newest_names = get_newest_names(table);
-    if(newest_names)
+    Names_List *newest_names = get_newest_names(table);
+    if (newest_names)
     {
-    //    failed_alloc();
-        return 1;
+        failed_alloc();
+        return -1;
     }
-  
+
     //*****************PRINT OUT TEST************************/
-    int num_nn = sizeof(newest_names)/sizeof(char*);
 
-    for(int i = 0; i < num_nn; i++)
+    for (int i = 0; i < newest_names->num_names; i++)
     {
-        printf("newest_names[%d]: %s", i, newest_names[i]);
+        printf("newest_names[%d]: %s", i, newest_names->names[i]);
     }
 
-    free_string_array(newest_names, num_nn);
-
+    free_names_list(newest_names);
+    newest_names = NULL;
     //****************************************************** */
     //****************************************************** */
 
-
-
-    
     free_string_array(names, num_names);
+    names = NULL;
+
+    free_table(table);
+    table = NULL;
+
     //!!! return table;
     return 0;
 }
-
-
 
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Functionality will be in main.c -uf
 //  char ** newest_names = get_newest_names(table)

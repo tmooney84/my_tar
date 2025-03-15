@@ -485,41 +485,48 @@ while (read_size < tar_size)
     }
     else if (my_strcmp(argv[1], "-uf") == 0)
     {
-    // char op_flag = 'u';
+    /*
+    char op_flag = 'u';
     
-        // Hashmap *table = get_update_names(int tar_fd, char **names)
-    // char ** newest_names = get_newest_names(tar_fd, table);
-    //      if(newest_names)
-    //      {
-    //          failed_alloc();
-    //          return 1;
-    //      }
-        //int num_newest_names = sizeof(newest_names)/sizeof(char *);
-   
-        //>>>>>>>>>>>>>>>>print_error_names(table);
+        Hashmap *table = get_update_names(int tar_fd, char **names)
+        Names_List* newest_names = get_newest_names(table);
+         if(newest_names == NULL)
+         {
+             failed_alloc();
+             return 1;
+         }
+
+        int num_update_names = newest_names->num_names;
+        char **update_names = newest_names->names;
+
+*****************PRINT OUT TEST************************
+
+    for(int i = 0; i < num_update_names; i++)
+    {
+        printf("newest_names[%d]: %s", i, newest_names[i]);
+    }
+    ****************************************************** 
 
 
+        if (archive_tar(update_names, num_update_names, op_flag) < 0)
+        {
+            print_error("Unable to archive files");
+            return -1;
+        } 
 
+       //print out error messages of incorrect file names 
+        print_error_names(table);
 
-//*****************PRINT OUT TEST************************/
+        free_names_list(newest_names);
+        newest_names = NULL;
 
-    // for(int i = 0; i < num_nn; i++)
-    // {
-    //     printf("newest_names[%d]: %s", i, newest_names[i]);
-    // }
-    //****************************************************** */
+        free_table(table);
+        table = NULL;'
 
-
-    ///
-    //     if (archive_tar(newest_names, num_newest_names, op_flag) < 0)
-    //     {
-    //         print_error("Unable to archive files");
-    //         return -1;
-    //     } 
-
-    //     free_string_array(newest_names, num_newest_names);
-    //     free_table(table);
+        update_names = NULL;
     
+        return 0;
+        */ 
     
     }
     else if (my_strcmp(argv[1], "-xf") == 0)
@@ -537,6 +544,7 @@ while (read_size < tar_size)
     }
 
     free_string_array(names, num_names);
+    names = NULL; 
     return 0;
 }
 
@@ -894,6 +902,8 @@ int print_included_tar_contents(int tar_fd, char **names, int num_names)
     }
 
     free(names_log);
+    names_log = NULL;
+
     close(tar_fd);
     return 0;
 }
@@ -1059,6 +1069,7 @@ off_t process_entry(char *path, int tar_fd)
     current_location = lseek(tar_fd, current_location, SEEK_SET);
 
     free(hdr);
+    hdr = NULL;
 
     if (S_ISREG(arg_stats.st_mode))
     {
@@ -1396,6 +1407,7 @@ int extract_process_entry(header *f_header, int tar_fd, int current_block)
         }
 
         free(dir_name);
+        dir_name = NULL;
     }
 
     return current_block;
