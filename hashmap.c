@@ -338,7 +338,7 @@ int check_newest_names(int tar_fd, Hashtable *table)
     }
 
     int num_vetted_names = table->num_vetted_names;
-    int num_newest_names = num_vetted_names;
+    //int num_newest_names = num_vetted_names;
     struct stat tar_stats;
 
     if (fstat(tar_fd, &tar_stats) == -1)
@@ -388,19 +388,32 @@ int check_newest_names(int tar_fd, Hashtable *table)
 
         char filename[NAMESIZE] = {0};
         my_strncpy(filename, f_header->name, NAMESIZE - 1);
+        int last_slash_index = -1;
+
+        //printf("filename: %s\n", filename);
+
+        for(int i = 0; i < NAMESIZE; i++)
+        {
+            if(filename[i] == '/')
+                {
+                    last_slash_index = i;
+                }
+        }
+
+        filename[last_slash_index] = '\0';
+
+        //printf("filename after: %s\n", filename);
 
         int f_hash = hash_fn(filename, table->num_buckets);
 
         if (num_vetted_names == 0)
         {
-            //!!!print_error("my_tar command needs additional arguments to add files to tar file.");
-            printf("my_tar command needs additional arguments to add files to tar file.");
+            print_error("my_tar command needs additional arguments to add files to tar file.");
             return -1;
         }
 
         if (table->buckets[f_hash] == NULL)
         {
-            //!!!print_error("Unable to match file name...Error reading hashtable");
             print_error("No entry for bucket: %s\n", filename);
             return -1;
         }
@@ -409,20 +422,18 @@ int check_newest_names(int tar_fd, Hashtable *table)
 
         while (iterator != NULL)
         {
+            if ((my_strcmp(iterator->name, filename) == 0) && iterator->newest_version_flag == 1)
             {
-                if ((my_strcmp(iterator->name, filename) == 0) && iterator->newest_version_flag == 1)
+                time_t f_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
+
+                // Debug prints (recommended)
+                printf("Checking %s: stored_mtime=%ld, tar_mtime=%ld\n",
+                       filename, iterator->mod_time, f_mtime);
+
+                if (iterator->mod_time <= f_mtime)
                 {
-                    time_t f_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
-
-                    // Debug prints (recommended)
-                    printf("Checking %s: stored_mtime=%ld, tar_mtime=%ld\n",
-                           filename, iterator->mod_time, f_mtime);
-
-                    if (iterator->mod_time <= f_mtime)
-                    {
-                        iterator->newest_version_flag = 0;
-                        num_newest_names--;
-                    }
+                    iterator->newest_version_flag = 0;
+                    //num_newest_names--;
                 }
                 break;
             }
@@ -435,7 +446,7 @@ int check_newest_names(int tar_fd, Hashtable *table)
 Names_List *get_newest_names(Hashtable *table)
 {
     // First pass: Count valid entries
-    int n;
+    int n = 0;
     int num_newest_names = 0;
     for (int i = 0; i < table->num_buckets && n < table->num_vetted_names; i++)
     {
@@ -474,9 +485,8 @@ Names_List *get_newest_names(Hashtable *table)
     }
 
     // Second pass: Copy names
-    int m = 0;
     int index = 0;
-    for (int i = 0; i < table->num_buckets && m < num_newest_names; i++)
+    for (int i = 0; i < table->num_buckets && index < num_newest_names; i++)
     {
         File_Entry *entry = table->buckets[i];
         while (entry != NULL)
@@ -494,14 +504,11 @@ Names_List *get_newest_names(Hashtable *table)
                     free(newest_names);
                     return NULL;
                 }
-                m++;
-            }
-            //!!! my_strncpy(newest_names[index], entry->name, NAMESIZE -1)
-            strncpy(newest_names->names[index], entry->name, NAMESIZE - 1);
-            newest_names->names[index][NAMESIZE - 1] = '\0'; //>>>REMOVE FOR my_strncpy()
+            my_strncpy(newest_names->names[index], entry->name, NAMESIZE - 1);
             index++;
+            }
+            entry = entry->next;
         }
-        entry = entry->next;
     }
     return newest_names;
 }
@@ -605,7 +612,6 @@ int check_files_exist(Hashtable *table)
     return 0;
 }
 
-// WHERE I LEFT OFF!!!
 int print_error_names(Hashtable *table)
 {
     // look at  ln 880 in main.c to see loop of file_not_found_error
@@ -663,7 +669,7 @@ int main()
     /************************************************************************/
 
     /**********MIMICS THE char **names THAT WOULD BE PASSED THROUGH**********/
-    int num_names = 6;
+    int num_names = 7;
     char **names = malloc(sizeof(char *) * num_names);
 
     for (int i = 0; i < num_names; i++)
@@ -677,6 +683,7 @@ int main()
     strncpy(names[3], "file3.txt", NAMESIZE - 1);
     strncpy(names[4], "dir4", NAMESIZE - 1);
     strncpy(names[5], "file3.txt", NAMESIZE - 1);
+    strncpy(names[6], "wrong_file.txt", NAMESIZE - 1);
 
     printf("Inputted string names: \n");
 
@@ -701,10 +708,33 @@ int main()
         return -1;
     }
 
+
+    if (check_newest_names(tar_fd, table) < 0)
+    {
+        print_error("Unable to check for newest names");
+        return -1;
+    }
+    //>>>>>> in main.c -uf: char ** newest_names = check_newest_names(tar_fd, table);
+
+    //************************************WILL BE IN main.c */
+    print_error_names(table);
+
+    //***************************************************** */
+
+    //************************************WILL BE IN main.c */
+    Names_List *newest_names = get_newest_names(table);
+    if (newest_names == NULL)
+    {
+        failed_alloc();
+        return -1;
+    }
+
+    //*****************PRINT OUT TEST************************/
     printf("num_buckets: %d\nnum_vetted_names: %d\n", table->num_buckets, table->num_vetted_names);
     printf("\n");
 
     int n = 0;
+
 
     for (int i = 0; i < table->num_buckets && n < table->num_vetted_names; i++)
     {
@@ -727,31 +757,15 @@ int main()
             }
         }
     }
-    if (check_newest_names(tar_fd, table) < 0)
+
+
+    printf("/n");
+
+        printf("newest_names->num_names: %d\n", newest_names->num_names);
+    
+        for (int i = 0; i < newest_names->num_names; i++)
     {
-        print_error("Unable to check for newest names");
-        return -1;
-    }
-    //>>>>>> in main.c -uf: char ** newest_names = check_newest_names(tar_fd, table);
-
-    //************************************WILL BE IN main.c */
-    print_error_names(table);
-
-    //***************************************************** */
-
-    //************************************WILL BE IN main.c */
-    Names_List *newest_names = get_newest_names(table);
-    if (newest_names)
-    {
-        failed_alloc();
-        return -1;
-    }
-
-    //*****************PRINT OUT TEST************************/
-
-    for (int i = 0; i < newest_names->num_names; i++)
-    {
-        printf("newest_names[%d]: %s", i, newest_names->names[i]);
+        printf("newest_names->names[%d]: %s\n", i, newest_names->names[i]);
     }
 
     free_names_list(newest_names);
