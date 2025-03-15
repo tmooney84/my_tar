@@ -488,17 +488,36 @@ while (read_size < tar_size)
     // char op_flag = 'u';
     
         // Hashmap *table = get_update_names(int tar_fd, char **names)
-        //char **newest_names = get_newest_names(tar_fd, table);
+    // char ** newest_names = get_newest_names(tar_fd, table);
+    //      if(newest_names)
+    //      {
+    //          failed_alloc();
+    //          return 1;
+    //      }
         //int num_newest_names = sizeof(newest_names)/sizeof(char *);
-    
+   
+        //>>>>>>>>>>>>>>>>print_error_names(table);
+
+
+
+
+//*****************PRINT OUT TEST************************/
+
+    // for(int i = 0; i < num_nn; i++)
+    // {
+    //     printf("newest_names[%d]: %s", i, newest_names[i]);
+    // }
+    //****************************************************** */
+
+
     ///
     //     if (archive_tar(newest_names, num_newest_names, op_flag) < 0)
     //     {
     //         print_error("Unable to archive files");
     //         return -1;
     //     } 
-   
-    //     free_string_array(newest_names);
+
+    //     free_string_array(newest_names, num_newest_names);
     //     free_table(table);
     
     

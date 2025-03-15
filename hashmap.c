@@ -107,7 +107,6 @@ void free_string_array(char **names, int num_names)
 }
 //**********************************************************************************************/
 
-
 // add + collision linked list logic
 
 // build_entry() fn needed? >>> one per file/dir name
@@ -311,15 +310,15 @@ int check_newest_names(int tar_fd, Hashtable *table)
                     while (iterator != NULL)
                     {
                         {
-                            // if(my_strcmp(iterator->name, f_header->name) == 0)
+                            // if(my_strcmp(iterator->name, f_header->name) == 0 && iterator->newest_version_flag == 1)
                             if ((strcmp(iterator->name, f_header->name) == 0) && iterator->newest_version_flag == 1)
                             {
                                 time_t f_mtime = (time_t)parse_octal(f_header->mtime, sizeof(f_header->mtime));
-                                
+
                                 if (iterator->mod_time <= f_mtime)
                                 {
                                     iterator->newest_version_flag = 0;
-                                    num_newest_names--; 
+                                    num_newest_names--;
                                     break;
                                 }
                             }
@@ -333,36 +332,65 @@ int check_newest_names(int tar_fd, Hashtable *table)
     return 0;
 }
 
+char **get_newest_names(Hashtable *table)
+{
+    // First pass: Count valid entries
+    int num_newest_names = 0;
+    for (int i = 0; i < table->num_buckets; i++)
+    {
+        File_Entry *entry = table->buckets[i];
+        while (entry != NULL)
+        {
+            if (entry->file_exists_flag && entry->newest_version_flag)
+            {
+                num_newest_names++;
+            }
+            entry = entry->next;
+        }
+    }
 
-// char ** newest_names = get_newest_names(table)
-//     char **newest_names = malloc(num_newest_names * sizeof(char *));
-//     for(int i = 0; i < num_newest_names; i++)
-//     {
-//         newest_names[i] = malloc(NAMESIZE * sizeof(char));
-//     }
+    if (num_newest_names == 0)
+    {
+        return NULL;
+    }
 
+    // Allocate needed space for newest_names
+    char **newest_names = malloc(num_newest_names * sizeof(char *));
+    if (newest_names == NULL)
+    {
+        return NULL;
+    }
 
-//     free_string_array()
-// }
-
-
-
-
-
-
-
-// Checking file age vs. f_header file
-/****************************************************** */
-/*
-//NOT SURE IF I WILL NEED TO BREAK OUT THE LOGIC HERE OR IF CAN JUST BE PART OF THE ORIGINAL CONDITOINAL
-
-    time_t infile_mtime = (time_t)parse_octal(f_header->mtime, 12);
-
-    time_t append_file
-
-
+    // Second pass: Copy names
+    int index = 0;
+    for (int i = 0; i < table->num_buckets; i++)
+    {
+        File_Entry *entry = table->buckets[i];
+        while (entry != NULL)
+        {
+            if (entry->file_exists_flag && entry->newest_version_flag)
+            {
+                newest_names[index] = malloc(NAMESIZE * sizeof(char));
+                if (newest_names[index] == NULL)
+                {
+                    // Cleanup and return NULL
+                    for (int j = 0; j < index; j++)
+                    {
+                        free(newest_names[j]);
+                    }
+                    free(newest_names);
+                    return NULL;
+                }
+            }
+            //!!! my_strncpy(newest_names[index], entry->name, NAMESIZE -1)
+            strncpy(newest_names[index], entry->name, NAMESIZE - 1);
+            newest_names[index][NAMESIZE - 1] = '\0'; //>>>REMOVE FOR my_strncpy()
+            index++;
+        }
+        entry = entry->next;
+    }
+    return newest_names;
 }
-*/
 
 int get_mod_times(Hashtable *table)
 {
@@ -397,7 +425,6 @@ int get_mod_times(Hashtable *table)
             }
         }
     }
-
     return 0;
 }
 
@@ -465,16 +492,24 @@ int check_files_exist(Hashtable *table)
     return 0;
 }
 
+//WHERE I LEFT OFF!!!
+int print_error_names(table)
+{
+// look at  ln 880 in main.c to see loop of file_not_found_error
+// and previous_errors(); are used and replicate with iteration
+}
+
+
 // Hashmap *get_update_names(int tar_fd, char **names)
 // vvv
 int main()
 {
 
-/*********************MIMICS tar_fd*************************************/
-int tar_fd;
+    /*********************MIMICS tar_fd*************************************/
+    int tar_fd;
 
     char *tar_name = malloc(NAMESIZE * sizeof(char));
-    if(!tar_name)
+    if (!tar_name)
     {
         return -1;
     }
@@ -485,9 +520,9 @@ int tar_fd;
     {
         return -1;
     }
-/************************************************************************/
+    /************************************************************************/
 
-/**********MIMICS THE char **names THAT WOULD BE PASSED THROUGH**********/
+    /**********MIMICS THE char **names THAT WOULD BE PASSED THROUGH**********/
     int num_names = 6;
     char **names = malloc(sizeof(char *) * num_names);
 
@@ -509,7 +544,8 @@ int tar_fd;
     {
         printf("names[%d]: %s\n", i, names[i]);
     }
-
+    /************************************************************************/
+    
     Hashtable *table = build_prompt_names_table(names, num_names);
     if (check_files_exist(table) < 0)
     {
@@ -551,40 +587,76 @@ int tar_fd;
             }
         }
     }
-        if(check_newest_names(tar_fd, table) < 0)
-        {
-           print_error("Unable to check for newest names");
-           return -1; 
-        } 
-        //>>>>>> in main.c -uf: char ** newest_names = check_newest_names(tar_fd, table);
-
-        free_string_array(names, num_names);
-                
-        //!!! return table;
-        return 0;
+    if (check_newest_names(tar_fd, table) < 0)
+    {
+        print_error("Unable to check for newest names");
+        return -1;
     }
-//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-        // char ** newest_names = get_newest_names(table)
+    //>>>>>> in main.c -uf: char ** newest_names = check_newest_names(tar_fd, table);
 
-        // return newest_names;
+    //************************************WILL BE IN main.c */
+    print_error_names(table); 
+    
+    //***************************************************** */ 
+    
+    //************************************WILL BE IN main.c */
+    char ** newest_names = get_newest_names(table);
+    if(newest_names)
+    {
+    //    failed_alloc();
+        return 1;
+    }
+  
+    //*****************PRINT OUT TEST************************/
+    int num_nn = sizeof(newest_names)/sizeof(char*);
 
-        // cycle through tar and once name found check names on hashtable
-        // if match then compare modified flag (need to
-        // convert the tar file mod to time_t) them compare and change
-        //  newest_flag accordingly...
+    for(int i = 0; i < num_nn; i++)
+    {
+        printf("newest_names[%d]: %s", i, newest_names[i]);
+    }
 
-        // resize_newest_names(newest_names)
-        // use vetted names number for malloc initial space
-        // cycle through and for each name and check if newest is 1
-        // resize malloc after n++ the number of names that are new
-        //^^^ make sure that memory for the names that are truncated
-        // are freed
+    free_string_array(newest_names, num_nn);
 
-        // CYCLE THRU UMAGICS TO COMPARE DATE MODIFIED
-        // using hash function to find bucket and then
-        // traverse until find node and compare DATE MODIFIED
-        // both should be t_time
+    //****************************************************** */
+    //****************************************************** */
 
-        // PRINT ERRORS
-        // need to include the file not found print error functionality; I believe it should
-        // have the two layers of errors... functionality that I should be able to copy
+
+
+    
+    free_string_array(names, num_names);
+    //!!! return table;
+    return 0;
+}
+
+
+
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Functionality will be in main.c -uf
+//  char ** newest_names = get_newest_names(table)
+//  if(newest_names == NULL)
+//  {
+//      //!!! FOR TESTING ONLY
+//      printf("No new names!!!");
+//  }
+
+// return newest_names;
+
+// cycle through tar and once name found check names on hashtable
+// if match then compare modified flag (need to
+// convert the tar file mod to time_t) them compare and change
+//  newest_flag accordingly...
+
+// resize_newest_names(newest_names)
+// use vetted names number for malloc initial space
+// cycle through and for each name and check if newest is 1
+// resize malloc after n++ the number of names that are new
+//^^^ make sure that memory for the names that are truncated
+// are freed
+
+// CYCLE THRU UMAGICS TO COMPARE DATE MODIFIED
+// using hash function to find bucket and then
+// traverse until find node and compare DATE MODIFIED
+// both should be t_time
+
+// PRINT ERRORS
+// need to include the file not found print error functionality; I believe it should
+// have the two layers of errors... functionality that I should be able to copy
