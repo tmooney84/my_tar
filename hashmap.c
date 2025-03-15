@@ -16,61 +16,39 @@
 #include "my_printf.h"
 #include "print_error.h"
 #include "file_header_fns.h"
+#include "hashmap.h"
 
-#define RECORDSIZE 20
 #define NAMESIZE 100
-#define TUNMLEN 32
-#define TGNMLEN 32
 #define PREFIXSIZE 155
-#define BLOCKSIZE 512
 #define MAX_FILENAME 255
-
-#define PATH_MAX 4096
-// better to use a union? padding needed?
-
 #define TAR_PERMS 0664 // RW for owner, group & R for others
 
-#define TMAGIC "ustar" /* ustar and a null */
-#define TMAGLEN 6
-#define TVERSION "00" /* 00 and no null */
-#define TVERSLEN 2
+/**************************remove struct since in hashmap.h?********/
+// typedef struct file_entry
+// {
+//     int key;
+//     char name[NAMESIZE - 1];
+//     int newest_version_flag;
+//     int file_exists_flag;
+//     time_t mod_time;
+//     struct file_entry *next;
+// } File_Entry;
 
-typedef struct file_entry
-{
-    int key;
-    char name[NAMESIZE - 1];
-    int newest_version_flag;
-    int file_exists_flag;
-    time_t mod_time;
-    struct file_entry *next;
-} File_Entry;
+// typedef struct Hashtable
+// {
+//     File_Entry **buckets;
+//     int num_buckets;
+//     int num_vetted_names;
+// } Hashtable;
 
-typedef struct Hashtable
-{
-    File_Entry **buckets;
-    int num_buckets;
-    int num_vetted_names;
-} Hashtable;
+// typedef struct names_list
+// {
+//     char **names;
+//     int num_names;
+// } Names_List;
 
-typedef struct names_list
-{
-    char **names;
-    int num_names;
-} Names_List;
-
-//     int append_tar(char **names, int num_names, char op_flag) // int v_flag
-//  {
-//      int tar_fd;
-
-//      char *tar_name = names[0];
-//      // printf("tar_name: %s\n", tar_name);
-//      tar_fd = create_tar_file(tar_name, op_flag);
-//      if (tar_fd < 0)
-//      {
-//          return -1;
-//      }
-
-//     int prev_error_flag = 0;
+/**************************remove struct since in hashmap.h?********/
+/***************************************************************** */
 
 Hashtable *create_table(int num_buckets)
 {
@@ -646,9 +624,8 @@ int print_error_names(Hashtable *table)
     return 0;
 }
 
-// Hashmap *get_update_names(int tar_fd, char **names)
-// vvv
-int main()
+//int main()
+Hashtable *get_update_names(int tar_fd, char **names)
 {
 
     /*********************MIMICS tar_fd*************************************/
@@ -685,12 +662,13 @@ int main()
     strncpy(names[5], "file3.txt", NAMESIZE - 1);
     strncpy(names[6], "wrong_file.txt", NAMESIZE - 1);
 
-    printf("Inputted string names: \n");
+    //*****************PRINT OUT TEST************************/
+    // printf("Inputted string names: \n");
 
-    for (int i = 0; i < num_names; i++)
-    {
-        printf("names[%d]: %s\n", i, names[i]);
-    }
+    // for (int i = 0; i < num_names; i++)
+    // {
+    //     printf("names[%d]: %s\n", i, names[i]);
+    // }
     /************************************************************************/
 
     Hashtable *table = build_prompt_names_table(names, num_names);
@@ -730,48 +708,49 @@ int main()
     }
 
     //*****************PRINT OUT TEST************************/
-    printf("num_buckets: %d\nnum_vetted_names: %d\n", table->num_buckets, table->num_vetted_names);
-    printf("\n");
+    // printf("num_buckets: %d\nnum_vetted_names: %d\n", table->num_buckets, table->num_vetted_names);
+    // printf("\n");
 
-    int n = 0;
-
-
-    for (int i = 0; i < table->num_buckets && n < table->num_vetted_names; i++)
-    {
-        if (table->buckets[i] != NULL)
-        {
-            File_Entry *iterator = table->buckets[i];
-
-            while (iterator != NULL)
-            {
-                {
-                    printf("bucket[%d] key: %d\n", i, table->buckets[i]->key);
-                    printf("bucket[%d] name: %s\n", i, table->buckets[i]->name);
-                    printf("bucket[%d] file_exists_flag: %d\n", i, table->buckets[i]->file_exists_flag);
-                    printf("bucket[%d] newest_version_flag: %d\n", i, table->buckets[i]->newest_version_flag);
-                    printf("bucket[%d] mod_time: %lld\n", i, (long long int)table->buckets[i]->mod_time);
-                    printf("\n");
-                    n++;
-                }
-                iterator = iterator->next;
-            }
-        }
-    }
+    // int n = 0;
 
 
-    printf("/n");
+    // for (int i = 0; i < table->num_buckets && n < table->num_vetted_names; i++)
+    // {
+    //     if (table->buckets[i] != NULL)
+    //     {
+    //         File_Entry *iterator = table->buckets[i];
 
-        printf("newest_names->num_names: %d\n", newest_names->num_names);
+    //         while (iterator != NULL)
+    //         {
+    //             {
+    //                 printf("bucket[%d] key: %d\n", i, table->buckets[i]->key);
+    //                 printf("bucket[%d] name: %s\n", i, table->buckets[i]->name);
+    //                 printf("bucket[%d] file_exists_flag: %d\n", i, table->buckets[i]->file_exists_flag);
+    //                 printf("bucket[%d] newest_version_flag: %d\n", i, table->buckets[i]->newest_version_flag);
+    //                 printf("bucket[%d] mod_time: %lld\n", i, (long long int)table->buckets[i]->mod_time);
+    //                 printf("\n");
+    //                 n++;
+    //             }
+    //             iterator = iterator->next;
+    //         }
+    //     }
+    // }
+
+
+    // printf("/n");
+
+    //     printf("newest_names->num_names: %d\n", newest_names->num_names);
     
-        for (int i = 0; i < newest_names->num_names; i++)
-    {
-        printf("newest_names->names[%d]: %s\n", i, newest_names->names[i]);
-    }
+    //     for (int i = 0; i < newest_names->num_names; i++)
+    // {
+    //     printf("newest_names->names[%d]: %s\n", i, newest_names->names[i]);
+    // }
 
+    //****************************************************** */
+    //****************************************************** */
+    
     free_names_list(newest_names);
     newest_names = NULL;
-    //****************************************************** */
-    //****************************************************** */
 
     free_string_array(names, num_names);
     names = NULL;
@@ -779,8 +758,8 @@ int main()
     free_table(table);
     table = NULL;
 
-    //!!! return table;
-    return 0;
+    return table;
+    //return 0;
 }
 
 // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX Functionality will be in main.c -uf

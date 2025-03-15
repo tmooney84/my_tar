@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "print_error.h": "c",
-        "utils.h": "c"
+        "utils.h": "c",
+        "my_printf.h": "c",
+        "file_header_fns.h": "c"
     }
 }

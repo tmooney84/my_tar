@@ -55,6 +55,7 @@ Error with the tarball file (provided file is: tarball.tar): my_tar: Cannot open
 #include "my_printf.h"
 #include "print_error.h"
 #include "file_header_fns.h"
+#include "hashmap.h"
 
 #define RECORDSIZE 20
 #define NAMESIZE 100
@@ -493,7 +494,7 @@ while (read_size < tar_size)
          if(newest_names == NULL)
          {
              failed_alloc();
-             return 1;
+             return -1;
          }
 
         int num_update_names = newest_names->num_names;
