@@ -58,4 +58,5 @@ Names_List *get_newest_names(Hashtable *table);
 int get_mod_times(Hashtable *table);
 int check_files_exist(Hashtable *table);
 int print_error_names(Hashtable *table);
+void print_table(Hashtable *table);
 #endif

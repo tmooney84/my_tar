@@ -371,7 +371,7 @@ int check_newest_names(int tar_fd, Hashtable *table)
 
         //printf("filename: %s\n", filename);
 
-        for(int i = 0; i < NAMESIZE; i++)
+        for(int i = 0; filename[i] == '\0' && i < NAMESIZE; i++)
         {
             if(filename[i] == '/')
                 {
@@ -379,7 +379,10 @@ int check_newest_names(int tar_fd, Hashtable *table)
                 }
         }
 
-        filename[last_slash_index] = '\0';
+        if(last_slash_index != -1)
+        {
+            filename[last_slash_index] = '\0';
+        }
 
         //printf("filename after: %s\n", filename);
 
@@ -625,6 +628,37 @@ int print_error_names(Hashtable *table)
     return 0;
 }
 
+void print_table(Hashtable *table)
+    {
+    printf("num_buckets: %d\nnum_vetted_names: %d\n", table->num_buckets, table->num_vetted_names);
+    printf("\n");
+
+    int n = 0;
+
+
+    for (int i = 0; i < table->num_buckets && n < table->num_vetted_names; i++)
+    {
+        if (table->buckets[i] != NULL)
+        {
+            File_Entry *iterator = table->buckets[i];
+
+            while (iterator != NULL)
+            {
+                {
+                    printf("bucket[%d] key: %d\n", i, table->buckets[i]->key);
+                    printf("bucket[%d] name: %s\n", i, table->buckets[i]->name);
+                    printf("bucket[%d] file_exists_flag: %d\n", i, table->buckets[i]->file_exists_flag);
+                    printf("bucket[%d] newest_version_flag: %d\n", i, table->buckets[i]->newest_version_flag);
+                    printf("bucket[%d] mod_time: %lld\n", i, (long long int)table->buckets[i]->mod_time);
+                    printf("\n");
+                    n++;
+                }
+                iterator = iterator->next;
+            }
+        }
+    }
+    }
+
 //int main()
 Hashtable *get_update_names(char **input_names, int input_num_names)
 {
@@ -674,15 +708,28 @@ Hashtable *get_update_names(char **input_names, int input_num_names)
     // strncpy(names[6], "wrong_file.txt", NAMESIZE - 1);
 
     //*****************PRINT OUT TEST************************/
-    // printf("Inputted string names: \n");
+    printf("Inputted string names: \n");
 
-    // for (int i = 0; i < num_names; i++)
-    // {
-    //     printf("names[%d]: %s\n", i, names[i]);
-    // }
+    for (int i = 0; i < num_names; i++)
+    {
+        printf("names[%d]: %s\n", i, names[i]);
+    }
     /************************************************************************/
 
     Hashtable *table = build_prompt_names_table(names, num_names);
+    if(table == NULL)
+    {
+        failed_alloc();
+        return NULL;
+    }
+   
+   /***********************PRINTING FOR TESTING************ */ 
+    printf("Table pre-processing:\n"); 
+    print_table(table);
+    printf("\n");
+    /****************************************************** */
+
+
     if (check_files_exist(table) < 0)
     {
         // print_error("Error checking whether files indicated in hashtable exist.\n");
@@ -700,7 +747,7 @@ Hashtable *get_update_names(char **input_names, int input_num_names)
 
     if (check_newest_names(tar_fd, table) < 0)
     {
-        print_error("Unable to check for newest names");
+        print_error("Unable to check for newest names.\n");
         return NULL;
     }
     //>>>>>> in main.c -uf: char ** newest_names = check_newest_names(tar_fd, table);
@@ -719,43 +766,22 @@ Hashtable *get_update_names(char **input_names, int input_num_names)
     }
 
     //*****************PRINT OUT TEST************************/
-    // printf("num_buckets: %d\nnum_vetted_names: %d\n", table->num_buckets, table->num_vetted_names);
-    // printf("\n");
-
-    // int n = 0;
-
-
-    // for (int i = 0; i < table->num_buckets && n < table->num_vetted_names; i++)
-    // {
-    //     if (table->buckets[i] != NULL)
-    //     {
-    //         File_Entry *iterator = table->buckets[i];
-
-    //         while (iterator != NULL)
-    //         {
-    //             {
-    //                 printf("bucket[%d] key: %d\n", i, table->buckets[i]->key);
-    //                 printf("bucket[%d] name: %s\n", i, table->buckets[i]->name);
-    //                 printf("bucket[%d] file_exists_flag: %d\n", i, table->buckets[i]->file_exists_flag);
-    //                 printf("bucket[%d] newest_version_flag: %d\n", i, table->buckets[i]->newest_version_flag);
-    //                 printf("bucket[%d] mod_time: %lld\n", i, (long long int)table->buckets[i]->mod_time);
-    //                 printf("\n");
-    //                 n++;
-    //             }
-    //             iterator = iterator->next;
-    //         }
-    //     }
-    // }
-
-
-    // printf("/n");
-
-    //     printf("newest_names->num_names: %d\n", newest_names->num_names);
+    //*****************PRINT OUT TEST************************/
+    printf("Table post-processing:\n"); 
+    print_table(table);
     
-    //     for (int i = 0; i < newest_names->num_names; i++)
-    // {
-    //     printf("newest_names->names[%d]: %s\n", i, newest_names->names[i]);
-    // }
+    
+
+
+
+    printf("/n");
+
+        printf("newest_names->num_names: %d\n", newest_names->num_names);
+    
+        for (int i = 0; i < newest_names->num_names; i++)
+    {
+        printf("newest_names->names[%d]: %s\n", i, newest_names->names[i]);
+    }
 
     //****************************************************** */
     //****************************************************** */
