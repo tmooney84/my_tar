@@ -25,6 +25,10 @@ Compile the executable program to run locally in the contained folder:
 ```
 make my_tar
 ```
+To run my_tar testing:
+```
+bash tests.sh
+```
 
 ## Usage
 Create tar file:
@@ -52,6 +56,14 @@ already included in the tar file):
 ./my_tar -uf <tarfile_name> <file_to_add> ...
 ```
 
+## Issues
+1) The checksums of included file headers of identical tar files and a my_tar-created files do not match. 
+
+2) In order for the hexdumps in the tests.sh to match between the standard tar utility and my_tar, curiously enough the matching magic code was "USTAR " instead of the "USTAR\0". This seems to be
+
+3) The write padding functionality is adding extra padding since re-write of padding functionality with attempts to logic changes have not resolved the issue.
+
+4) After adding -rf and -uf functionality the recursive writing of sub-folders to file is having issues.
 
 ## Future Improvements
 1) Add the -v flag and verbose functionality

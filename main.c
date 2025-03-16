@@ -24,12 +24,8 @@
 #define PREFIXSIZE 155
 #define BLOCKSIZE 512
 #define MAX_FILENAME 255
-
 #define PATH_MAX 4096
-// better to use a union? padding needed?
-
 #define TAR_PERMS 0664 // RW for owner, group & R for others
-
 #define TMAGIC "ustar" /* ustar and a null */
 #define TMAGLEN 6
 #define TVERSION "00" /* 00 and no null */
@@ -37,8 +33,20 @@
 
 int main(int argc, char **argv)
 {
-    int num_flag_args = 1; // for now is 1 to make it work
+    if (argc == 1)
+    {
+        flag_error();
+        return -1;
+    }
 
+    else if(argc == 2)
+    {
+        print_error("tar: option requires an argument -- 'f' ");
+        return -1;
+    }
+
+    int num_flag_args = 1; // for now is 1 to make it work
+    
     int num_names = argc - (num_flag_args + 1);
     char **first_name = argv;
     char **names = create_names_array(argc, first_name, num_names);
@@ -48,11 +56,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    if (argc == 1)
-    {
-        flag_error();
-        return -1;
-    }
+
     else if (my_strcmp(argv[1], "-cf") == 0)
     {
         int fd = create_tar(names, num_names);
