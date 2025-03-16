@@ -270,10 +270,8 @@ char **create_names_array(int argc, char **argv, int num_names)
         names_index++;
     }
 
-    // print_string_array(names, names_index);
     return names;
 }
-// 346-416 commented for testing
 
 int open_file(char *file_name, int flags, int perms)
 {
@@ -1312,7 +1310,7 @@ int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
 
         /*********************************** */
         off_t current_location = lseek(dst_fd, 0, SEEK_CUR);
-        printf("current location before read: %ld", current_location);
+        printf("current location before read: %ld\n", current_location);
 
         if ((n = read(src_fd, transfer_buff, bytes_to_read)) < 0)
         {
@@ -1373,6 +1371,6 @@ int write_file_data(int dst_fd, int src_fd, int f_size, int tar_flag)
     //}
     int write_size = (long int)total_bytes_written + (long int)add_written;
     off_t final_location = lseek(dst_fd, 0, SEEK_CUR);
-    printf("final_location after writing file data: %ld", final_location);
+    printf("final_location after writing file data: %ld\n", final_location);
     return write_size;
 }

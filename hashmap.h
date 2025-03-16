@@ -14,6 +14,7 @@
 #include <sys/time.h>
 
 #include "utils.h"
+#include "tar_utils.h"
 #include "my_printf.h"
 #include "print_error.h"
 #include "file_header_fns.h"

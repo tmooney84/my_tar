@@ -70,6 +70,7 @@ char *my_strncpy(char *dst, const char *src, size_t n)
     {
         dst[i] = '\0';
     }
+
     return dst;
 }
 

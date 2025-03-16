@@ -41,7 +41,7 @@ int main(int argc, char **argv)
 
     else if(argc == 2)
     {
-        print_error("tar: option requires an argument -- 'f' ");
+        print_error("tar: option requires an argument -- 'f'");
         return -1;
     }
 
@@ -63,6 +63,7 @@ int main(int argc, char **argv)
         if (fd < 0)
         {
             print_error("Error creating tar file\n");
+            free_string_array(names, num_names);
             return -1;
         }
     }
@@ -77,6 +78,7 @@ int main(int argc, char **argv)
         if (archive_tar(tar_name, archive_names, num_archive_names, op_flag) < 0)
         {
             print_error("Unable to archive files");
+            free_string_array(names, num_names);
             return -1;
         }
 
@@ -89,42 +91,54 @@ int main(int argc, char **argv)
         if (tar_fd < 0)
         {
             print_error("Error creating tar file\n");
+            free_string_array(names, num_names);
             return -1;
         }
 
         if (print_included_tar_contents(tar_fd, names, num_names) < 0)
         {
             print_error("Unable to print contents of tar file");
-            return 1;
+            free_string_array(names, num_names);
+            return -1;
         }
     }
     else if (my_strcmp(argv[1], "-uf") == 0)
     {
-        
         char op_flag = 'u';
+
+        // printf("NAMES GOING TO HASHMAP:\n");
+        // for(int i = 0; i < num_names; i++)
+        // {
+        //     printf("names[%d]: %s\n", i, names[i]);
+        // }
+        //printf("\n");
 
         Hashtable *table = get_update_names(names, num_names);
         if(table == NULL)
         {
             failed_alloc();
+            free_string_array(names, num_names);
             return -1;
         }
 
         Names_List *newest_names = get_newest_names(table);
         if (newest_names == NULL)
         {
-            failed_alloc();
-            return -1;
+            //FOR TESTING...
+            printf("No files added with update function.");
+            free_table(table); 
+            free_string_array(names, num_names);
+            return 0;
         }
 
         int num_update_names = newest_names->num_names;
         char **update_names = newest_names->names;
 
         /*****************PRINT OUT TEST************************/
-
+        printf("NAMES COMING FROM HASHMAP GOING TO archive_tar():\n");
         for (int i = 0; i < num_update_names; i++)
         {
-            printf("newest_names[%d]: %s", i, update_names[i]);
+            printf("newest_names[%d]: %s\n", i, update_names[i]);
         }
         /*******************************************************/
 
@@ -133,6 +147,8 @@ int main(int argc, char **argv)
         if (archive_tar(tar_name, update_names, num_update_names, op_flag) < 0)
         {
             print_error("Unable to archive files");
+            free_string_array(names, num_names);
+            free_table(table); 
             return -1;
         }
 
@@ -146,20 +162,20 @@ int main(int argc, char **argv)
         table = NULL;
 
         update_names = NULL;
-
-        return 0;
     }
     else if (my_strcmp(argv[1], "-xf") == 0)
     {
         if (extract_tar(names, num_names))
         {
             print_error("Unable to extract tar file contents.\n");
+            free_string_array(names, num_names);
             return -1;
         }
     }
     else
     {
         flag_error();
+        free_string_array(names, num_names);
         return -1;
     }
 
