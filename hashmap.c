@@ -17,7 +17,7 @@
 #include "print_error.h"
 #include "file_header_fns.h"
 #include "hashmap.h"
-//#include "main.c" >>>> ????
+#include "main.h" //>>>> ????
 
 #define NAMESIZE 100
 #define PREFIXSIZE 155
