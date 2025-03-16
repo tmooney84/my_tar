@@ -1,1 +1,0 @@
-This is a file for testing the extraction of my_tar. Hopefully it works.
