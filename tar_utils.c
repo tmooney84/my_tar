@@ -1132,6 +1132,7 @@ off_t write_padding(int tar_fd, int total_required_padding)
             print_error("Unable to read magic tar file\n");
             return -1;
         }
+        // read_size += n;
 
         f_header = (struct header *)header_buffer;
 
@@ -1147,15 +1148,15 @@ off_t write_padding(int tar_fd, int total_required_padding)
 
             int size = 0;
 //do I need to tell the size to write is 0?
-            if (f_header->typeflag == '5')  //
-            {                               //
-                size = 0;                   //
-            }                               //
+            // if (f_header->typeflag == '5')  //
+            // {                               //
+            //     size = 0;                   //
+            // }                               //
 
-           else  //
-            {   //
+           //else  //
+           // {   //
                size = parse_octal(f_header->size, sizeof(f_header->size));
-           }    //
+           //}    //
 
             if (size % BLOCKSIZE == 0)
             {
