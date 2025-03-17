@@ -315,22 +315,17 @@ void fill_size(char *file, struct stat file_stats, header *file_header)
     {
         return;
     }
-    long int f_size;
-    
-    if(S_ISDIR(file_stats.st_mode))
-    {
-        f_size = 0;
-    } 
-    else
-    {
-        f_size = (long int)file_stats.st_size;
-    }
-    
+    // printf("***************************************TEST SIZE***************************\n");
+    long int f_size = (long int)file_stats.st_size;
+    // printf("size: %ld\n", f_size);
     char string[12];
     my_memset(string, 0, 12);
     string[11] = '\0';
+    // printf("size string: %s\n", string);
+
     ld_to_oct_string(f_size, string, 12);
     my_strncpy(file_header->size, string, 12);
+    // printf("header size string: %s\n", file_header->size);
 }
 
 //     char mtime[12];      /* 136 */
@@ -340,12 +335,12 @@ void fill_mtime(char *file, struct stat file_stats, header *file_header)
     {
         return;
     }
-    long int mtime = (long int)file_stats.st_mtime;
+    long int mtime_ld = (long int)file_stats.st_mtime;
     char string[12];
     my_memset(string, 0, 12);
     string[11] = '\0';
 
-    ld_to_oct_string(mtime, string, 12);
+    ld_to_oct_string(mtime_ld, string, 12);
     my_strncpy(file_header->mtime, string, 12);
 }
 
