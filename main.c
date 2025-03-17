@@ -106,12 +106,15 @@ int main(int argc, char **argv)
     {
         char op_flag = 'u';
 
+
+        /*****************PRINT OUT TEST************************/
         // printf("NAMES GOING TO HASHMAP:\n");
         // for(int i = 0; i < num_names; i++)
         // {
         //     printf("names[%d]: %s\n", i, names[i]);
         // }
         //printf("\n");
+        /*******************************************************/
 
         Hashtable *table = get_update_names(names, num_names);
         if(table == NULL)
@@ -135,11 +138,11 @@ int main(int argc, char **argv)
         char **update_names = newest_names->names;
 
         /*****************PRINT OUT TEST************************/
-        printf("NAMES COMING FROM HASHMAP GOING TO archive_tar():\n");
-        for (int i = 0; i < num_update_names; i++)
-        {
-            printf("newest_names[%d]: %s\n", i, update_names[i]);
-        }
+        // printf("NAMES COMING FROM HASHMAP GOING TO archive_tar():\n");
+        // for (int i = 0; i < num_update_names; i++)
+        // {
+        //     printf("newest_names[%d]: %s\n", i, update_names[i]);
+        // }
         /*******************************************************/
 
         char *tar_name = names[0];
