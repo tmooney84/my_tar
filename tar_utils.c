@@ -999,7 +999,6 @@ off_t write_padding(int tar_fd, int total_required_padding)
                 lseek(tar_fd, current_location + size + (BLOCKSIZE - size), SEEK_SET);
             }
 
-            off_t now_local = lseek(tar_fd, 0, SEEK_CUR);
             break;
         }
         current_location = lseek(tar_fd, -512, SEEK_CUR);
