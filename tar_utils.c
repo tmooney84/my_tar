@@ -35,7 +35,6 @@
 #define TVERSION "00" /* 00 and no null */
 #define TVERSLEN 2
 
-
 int archive_tar(char *tar_name, char **archive_names, int num_archive_names, char op_flag) // int v_flag
 {
     int tar_fd;
@@ -1146,7 +1145,18 @@ off_t write_padding(int tar_fd, int total_required_padding)
              f_header->magic[5] == ' '))
         {
             current_location = lseek(tar_fd, 0, SEEK_CUR);
-            int size = parse_octal(f_header->size, sizeof(f_header->size));
+
+            int size = 0;
+//do I need to tell the size to write is 0?
+            // if (f_header->typeflag == '5')
+            // {
+            //     size = 0;
+            // }
+
+           // else
+            //{
+                size = parse_octal(f_header->size, sizeof(f_header->size));
+           // }
 
             if (size % BLOCKSIZE == 0)
             {
