@@ -1000,7 +1000,6 @@ off_t write_padding(int tar_fd, int total_required_padding)
             }
 
             off_t now_local = lseek(tar_fd, 0, SEEK_CUR);
-            printf("now_local: %ld", now_local);
             break;
         }
         current_location = lseek(tar_fd, -512, SEEK_CUR);
