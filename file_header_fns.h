@@ -27,7 +27,7 @@ typedef struct header
     char devminor[8];    /* 337 */
     char prefix[155];    /* 345 */
                          /* 500 */
-    char padding[12];    // POTENTIAL PADDING
+    char padding[12];    // padding to make the header exactly 512 bytes
 } header;
 
 typedef struct block
@@ -50,8 +50,8 @@ void fill_devmajor(char *file, struct stat file_stats, header *file_header);
 void fill_devminor(char *file, struct stat file_stats, header *file_header);
 void fill_chksum(header *file_header);
 
-void ld_to_string(long int number, char string[], int os_size);
 void int_to_oct_string(int number, char octal_string[], int os_size);
+//void ld_to_oct_string(long int number, char string[], int os_size)
 
 //Tester:
 int tester_main(char file_name []);

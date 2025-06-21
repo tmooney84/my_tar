@@ -97,7 +97,7 @@ header *fill_header_info(char *file)
     return file_header;
 }
 
-void int_to_oct_string(int number, char octal_string[], int os_size)
+void int_to_oct_string(int number, char *octal_string, int os_size)
 {
     for (int i = os_size - 2; i >= 0; i--)
     {
@@ -114,15 +114,6 @@ void ld_to_oct_string(long int number, char string[], int os_size)
         number /= 8;
     }
     string[os_size - 1] = '\0';
-}
-
-void ld_to_string(long int number, char string[], int os_size)
-{
-    for (int i = os_size - 2; i >= 0; i--)
-    {
-        string[i] = '0' + (number % 10);
-        number /= 10;
-    }
 }
 
 // char name[NAMESIZE]; /*   0 */
@@ -187,15 +178,10 @@ void fill_mode(char *file, struct stat file_stats, header *file_header)
 
     // 07777 mask that covers S_IRWXU, S_IRWXG, S_IRWXO
     mode_t file_stats_mode = file_stats.st_mode & 07777;
+    
     int result_mode = (int)file_stats_mode;
-
-    char octal_string[8];
-    my_memset(octal_string, 0, 8);
-
-    octal_string[7] = '\0';
-
-    int_to_oct_string(result_mode, octal_string, 8);
-    my_strncpy(file_header->mode, octal_string, 8);
+    int_to_oct_string(result_mode, file_header->mode, 8);
+    file_header->mode[7] = '\0';
 }
 
 //     char uid[8];         /* 108 */
@@ -207,12 +193,7 @@ void fill_uid(char *file, struct stat file_stats, header *file_header)
     }
     int uid_int = file_stats.st_uid;
 
-    char octal_string[8];
-    my_memset(octal_string, 0, 8);
-    octal_string[7] = '\0';
-
-    int_to_oct_string(uid_int, octal_string, 8);
-    my_strncpy(file_header->uid, octal_string, 8);
+    int_to_oct_string(uid_int, file_header->uid, 8);
     file_header->uid[7] = '\0';
 }
 
@@ -224,12 +205,8 @@ void fill_gid(char *file, struct stat file_stats, header *file_header)
         return;
     }
     int gid_int = file_stats.st_gid;
-    char octal_string[8];
-    my_memset(octal_string, 0, 8);
-    octal_string[7] = '\0';
 
-    int_to_oct_string(gid_int, octal_string, 8);
-    my_strncpy(file_header->gid, octal_string, 8);
+    int_to_oct_string(gid_int, file_header->gid, 8);
     file_header->gid[7] = '\0';
 }
 
@@ -248,14 +225,11 @@ void fill_size(char *file, struct stat file_stats, header *file_header)
     }
     else
     {
-    f_size = (long int)file_stats.st_size;
+        f_size = (long int)file_stats.st_size;
     }
-    char string[12];
-    my_memset(string, 0, 12);
-    string[11] = '\0';
 
-    ld_to_oct_string(f_size, string, 12);
-    my_strncpy(file_header->size, string, 12);
+    ld_to_oct_string(f_size, file_header->size, 12);
+    file_header->size[11] = '\0';
 }
 
 //     char mtime[12];      /* 136 */
@@ -266,12 +240,9 @@ void fill_mtime(char *file, struct stat file_stats, header *file_header)
         return;
     }
     long int mtime_ld = (long int)file_stats.st_mtime;
-    char string[12];
-    my_memset(string, 0, 12);
-    string[11] = '\0';
 
-    ld_to_oct_string(mtime_ld, string, 12);
-    my_strncpy(file_header->mtime, string, 12);
+    ld_to_oct_string(mtime_ld, file_header->mtime, 12);
+    file_header->mtime[11] = '\0';
 }
 
 void fill_typeflag(char *file, struct stat file_stats, header *file_header)
@@ -413,16 +384,12 @@ void fill_devminor(char *file, struct stat file_stats, header *file_header)
 
 void fill_chksum(header *file_header)
 {
-    //'0's to fill out checksum field
     my_memset(file_header->chksum, ' ', 8);
     int chksum_total = 0;
 
     unsigned char *header_bytes = (unsigned char *)file_header;
-    // loop over the entire header adding to chksum_total
-    // casts to unsigned char (bytes) datatype for looping
     for (int i = 0; i < BLOCKSIZE; i++)
     {
-        // not counting chksum portion of header
         if (i >= 148 && i < 156)
         {
             chksum_total += ' ';
